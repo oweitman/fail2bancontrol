@@ -44,7 +44,7 @@ chmod +x build-image.sh
 
 You must share the Fail2ban socket file with this container so it can communicate with the Fail2ban service.
 
-Mount the directory containing the socket from inside the fail2ban container. if fil2ban is installed in the host-system you can skip this part and mount the path directly,
+Mount the directory containing the socket from inside the fail2ban container. if fail2ban is installed in the host-system you can skip this part and mount the path directly,
 
 ```yaml
 volumes:
