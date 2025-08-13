@@ -5,15 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Flask",
-            "type": "python",
+            "name": "Launch Program",
+            "program": "${workspaceFolder}/src-backend/app.js",
             "request": "launch",
-            "module": "app",
-            "args": [
-                "run",
-                "--host","0.0.0.0",
-                "--port","9000",
-            ],
+            "skipFiles": ["<node_internals>/**"],
+            "type": "node"
+        },
+        {
+            "name": "Python backend",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src-backend/app.py",
+            "args": ["run", "--host", "0.0.0.0", "--port", "9000"],
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

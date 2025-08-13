@@ -284,9 +284,9 @@ class Handler(BaseHTTPRequestHandler):
         # Static file serving
         if path == "/" or path == "":
             path = "/index.html"
-        file_path = os.path.join("public", path.lstrip("/"))
+        file_path = os.path.join("src-frontend/dist", path.lstrip("/"))
         # Prevent directory traversal
-        if not os.path.abspath(file_path).startswith(os.path.abspath("public")):
+        if not os.path.abspath(file_path).startswith(os.path.abspath("src-frontend/dist")):
             self._set_headers(404, "text/plain")
             self.wfile.write(b"Not found1")
             return
@@ -343,7 +343,7 @@ class Handler(BaseHTTPRequestHandler):
                 action = parts[2]
                 ip = data.get("ip", "")
                 # Simple IPv4 validation
-                if not ip or not re.match(r"^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$", ip):
+                if not ip or not re.match(r"^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$", ip):
                     self._set_headers(400)
                     self.wfile.write(json.dumps(
                         {"error": "A valid IPv4 address must be provided in the body as \"ip\""}).encode())
