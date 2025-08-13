@@ -5,10 +5,12 @@ import {
     Chip,
     Stack,
     Button,
+    Typography,
 } from '@mui/material';
 import Jail from './Jail.jsx';
 
-export default function Overview({ list, themeMode, setThemeMode }) {
+export default function Overview({ list, themeMode, setThemeMode, error }) {
+    console.log(error);
     const styles = {
         card: {
             minWidth: '900px',
@@ -27,10 +29,14 @@ export default function Overview({ list, themeMode, setThemeMode }) {
         cardcontent: {
             padding: '8px',
         },
+        jailcount: {
+            margin: '0px 8px 16px',
+        },
         chip: {
             flex: '0 0 10px', // alle gleich breit
             justifyContent: 'center',
             whiteSpace: 'nowrap', // IP nicht umbrechen
+            backgroundColor: 'rgba(128, 128, 128, 0.2)',
         },
     };
 
@@ -51,6 +57,7 @@ export default function Overview({ list, themeMode, setThemeMode }) {
                                 ? setThemeMode('light')
                                 : setThemeMode('dark')
                         }
+                        size="small"
                         variant="contained"
                         color="primary"
                         aria-label="refresh"
@@ -60,18 +67,38 @@ export default function Overview({ list, themeMode, setThemeMode }) {
                 }
             />
             <CardContent sx={styles.cardcontent}>
-                <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap>
-                    {list.map((jail) => (
-                        <Chip
-                            key={jail}
-                            label={jail}
-                            sx={styles.chip}
-                            component="a"
-                            href={`#jail-${jail}`}
-                            clickable
-                        />
-                    ))}
-                </Stack>
+                {error ? (
+                    <Typography variant="h6" align="left">
+                        {error}
+                    </Typography>
+                ) : (
+                    <>
+                        <Typography
+                            variant="body1"
+                            align="left"
+                            sx={styles.jailcount}
+                        >
+                            {list.length} Jail(s)
+                        </Typography>
+                        <Stack
+                            direction="row"
+                            flexWrap="wrap"
+                            gap={1}
+                            useFlexGap
+                        >
+                            {list.map((jail) => (
+                                <Chip
+                                    key={jail}
+                                    label={jail}
+                                    sx={styles.chip}
+                                    component="a"
+                                    href={`#jail-${jail}`}
+                                    clickable
+                                />
+                            ))}
+                        </Stack>
+                    </>
+                )}
             </CardContent>
         </Card>
     );

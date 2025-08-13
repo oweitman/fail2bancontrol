@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Program",
+            "name": "Launch Program Debug",
             "program": "${workspaceFolder}/src-backend/app.js",
             "request": "launch",
             "skipFiles": ["<node_internals>/**"],

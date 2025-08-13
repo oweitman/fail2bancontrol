@@ -1,15 +1,15 @@
-version: "3.9"
+version: '3.9'
 
 services:
-  fail2banwebpanel:
-    image: fail2banwebpanel:latest
-    container_name: fail2banwebpanel
+    fail2banwebcontrol:
+        image: fail2banwebcontrol:latest
+        container_name: fail2banwebcontrol
 
-    ports:
-      - "9191:9000"
-    volumes:
-      # Sock-Datei vom Host einbinden (Pfad anpassen!)
-      - ./path/to/socket.sock:/path/in/container/socket.sock
-    environment:
-      TZ: Europe/Berlin
-    restart: unless-stopped
+        ports:
+            - '9191:9000'
+        volumes:
+            # Sock-Datei vom Host einbinden (Pfad anpassen!)
+            - ./path/to/socket.sock:/path/in/container/socket.sock
+        environment:
+            TZ: Europe/Berlin
+        restart: unless-stopped

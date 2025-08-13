@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "frontend: build",
+      "type": "shell",
+      "command": "npm run build",
+      "options": { "cwd": "${workspaceFolder}/src-frontend" },
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: build image",
+      "type": "shell",
+      "command": "docker build -t fail2banwebcontrol .",
+      "dependsOn": ["frontend: build"],
+      "problemMatcher": []
+    }
+  ]
+}

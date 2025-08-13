@@ -29,6 +29,8 @@ export default function BannedIPs({ name, ips, refreshStatus }) {
             flex: '0 0 140px', // alle gleich breit
             justifyContent: 'center',
             whiteSpace: 'nowrap', // IP nicht umbrechen
+            backgroundColor: "rgba(128, 128, 128, 0.2)"
+
         },
     };
     const sortIP = (a, b) => {

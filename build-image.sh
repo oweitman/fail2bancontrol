@@ -1,1 +1,1 @@
-docker build -t fail2banwebpanel .
+docker build -t fail2banwebcontrol .

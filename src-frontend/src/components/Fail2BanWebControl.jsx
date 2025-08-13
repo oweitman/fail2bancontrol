@@ -18,7 +18,7 @@ export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
     };
 
     useEffect(() => {
-        getGlobalStatus().then(setStatus).catch(console.error);
+        getGlobalStatus().then(setStatus).catch((error)=>setStatus({error:error.message}));
     }, []);
     return (
         <Box sx={styles.fail2ban}>
@@ -31,6 +31,7 @@ export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
 
             <Overview
                 list={status?.list || []}
+                error={status?.error }
                 themeMode={themeMode}
                 setThemeMode={setThemeMode}
             />

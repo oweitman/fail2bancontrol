@@ -284,9 +284,9 @@ class Handler(BaseHTTPRequestHandler):
         # Static file serving
         if path == "/" or path == "":
             path = "/index.html"
-        file_path = os.path.join("src-frontend/dist", path.lstrip("/"))
+        file_path = os.path.join("public", path.lstrip("/"))
         # Prevent directory traversal
-        if not os.path.abspath(file_path).startswith(os.path.abspath("src-frontend/dist")):
+        if not os.path.abspath(file_path).startswith(os.path.abspath("public")):
             self._set_headers(404, "text/plain")
             self.wfile.write(b"Not found1")
             return

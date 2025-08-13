@@ -15,15 +15,15 @@ RUN apt-get update \
 # Arbeitsverzeichnis der App
 WORKDIR /app
 
-# Backend unter /app/app.py
-COPY app.py /app/app.py
+# Backend-Einstiegspunkt
+COPY src-backend/app.py /app/app.py
 
 # Frontend unter /public (inkl. index.html)
 RUN mkdir -p /app/public
-COPY public/ /app/public/
+COPY src-frontend/dist/ /app/public/
 
 # App-Port
 EXPOSE 9000
 
 # Startbefehl
-CMD ["python", "-u", "app.py"]
+CMD ["python", "/app/app.py"]

@@ -6,3 +6,8 @@ node_modules/
 docker-compose
 build-image.sh
 .devcontainer/
+
+src-frontend/*
+!src-frontend/dist/**
+src-backend/*
+!src-backend/app.py

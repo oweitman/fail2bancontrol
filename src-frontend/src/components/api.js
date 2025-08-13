@@ -6,7 +6,7 @@ const API_BASE = '/api';
  */
 export async function getGlobalStatus() {
     const res = await fetch(`${API_BASE}/status`);
-    if (!res.ok) throw new Error(`Fehler: ${res.status}`);
+    if (!res.ok) throw new Error(`Error: ${res.status} ${res.statusText}`);
     let data = await res.json();
     return data;
 }
@@ -17,7 +17,7 @@ export async function getGlobalStatus() {
  */
 export async function getJails() {
     const res = await fetch(`${API_BASE}/jails`);
-    if (!res.ok) throw new Error(`Fehler: ${res.status}`);
+    if (!res.ok) throw new Error(`Error: ${res.status}`);
 
     let data = await res.json();
     return data;
@@ -29,7 +29,7 @@ export async function getJails() {
  */
 export async function getJailStatus(jailName) {
     const res = await fetch(`${API_BASE}/jail/${encodeURIComponent(jailName)}/status`);
-    if (!res.ok) throw new Error(`Fehler: ${res.status}`);
+    if (!res.ok) throw new Error(`Error: ${res.status}`);
     return res.json();
 }
 
@@ -42,7 +42,7 @@ export async function banIP(jailName, ip) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip }),
     });
-    if (!res.ok) throw new Error(`Fehler: ${res.status}`);
+    if (!res.ok) throw new Error(`Error: ${res.status}`);
     return res.json();
 }
 
@@ -55,6 +55,6 @@ export async function unbanIP(jailName, ip) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip }),
     });
-    if (!res.ok) throw new Error(`Fehler: ${res.status}`);
+    if (!res.ok) throw new Error(`Error: ${res.status}`);
     return res.json();
 }
