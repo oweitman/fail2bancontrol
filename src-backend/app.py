@@ -290,7 +290,6 @@ class Handler(BaseHTTPRequestHandler):
             self._set_headers(404, "text/plain")
             self.wfile.write(b"Not found1")
             return
-        print(f"file_path {file_path}")
         if os.path.exists(file_path) and os.path.isfile(file_path):
             ext = os.path.splitext(file_path)[1].lower()
             content_types = {

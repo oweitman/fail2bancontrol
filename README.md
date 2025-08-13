@@ -16,7 +16,7 @@ The application is containerized with Docker and connects directly to the `fail2
 ## 1) Clone the repository
 
 ```bash
-git clone <REPO_URL> fail2banwebcontrol
+git clone https://github.com/oweitman/fail2bancontrol fail2banwebcontrol
 cd fail2banwebcontrol
 ```
 
