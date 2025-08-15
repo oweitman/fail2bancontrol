@@ -4,7 +4,7 @@ import f2bLogo from '../assets/fail2ban-logo.png';
 import Jail from './Jail.jsx';
 import Overview from './Overview.jsx';
 
-import { getGlobalStatus /* , getJailStatus, banIP, unbanIP */ } from './api';
+import { getGlobalStatus } from './api';
 
 export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
     const [status, setStatus] = useState(null);
@@ -18,7 +18,9 @@ export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
     };
 
     useEffect(() => {
-        getGlobalStatus().then(setStatus).catch((error)=>setStatus({error:error.message}));
+        getGlobalStatus()
+            .then(setStatus)
+            .catch((error) => setStatus({ error: error.message }));
     }, []);
     return (
         <Box sx={styles.fail2ban}>
@@ -31,7 +33,7 @@ export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
 
             <Overview
                 list={status?.list || []}
-                error={status?.error }
+                error={status?.error}
                 themeMode={themeMode}
                 setThemeMode={setThemeMode}
             />

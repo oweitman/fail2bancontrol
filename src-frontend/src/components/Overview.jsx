@@ -7,7 +7,6 @@ import {
     Button,
     Typography,
 } from '@mui/material';
-import Jail from './Jail.jsx';
 
 export default function Overview({ list, themeMode, setThemeMode, error }) {
     console.log(error);
@@ -33,9 +32,9 @@ export default function Overview({ list, themeMode, setThemeMode, error }) {
             margin: '0px 8px 16px',
         },
         chip: {
-            flex: '0 0 10px', // alle gleich breit
+            flex: '0 0 10px',
             justifyContent: 'center',
-            whiteSpace: 'nowrap', // IP nicht umbrechen
+            whiteSpace: 'nowrap',
             backgroundColor: 'rgba(128, 128, 128, 0.2)',
         },
     };

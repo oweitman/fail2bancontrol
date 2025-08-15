@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, Chip, Stack } from '@mui/material';
-import Jail from './Jail.jsx';
-import {
-    unbanIP /* getGlobalStatus, getJailStatus, banIP, unbanIP */,
-} from './api';
+import { unbanIP } from './api';
 export default function BannedIPs({ name, ips, refreshStatus }) {
     const [ipList, setIPList] = useState([]);
     useEffect(() => {
@@ -26,11 +23,10 @@ export default function BannedIPs({ name, ips, refreshStatus }) {
             padding: '8px',
         },
         chip: {
-            flex: '0 0 140px', // alle gleich breit
+            flex: '0 0 140px',
             justifyContent: 'center',
-            whiteSpace: 'nowrap', // IP nicht umbrechen
-            backgroundColor: "rgba(128, 128, 128, 0.2)"
-
+            whiteSpace: 'nowrap',
+            backgroundColor: 'rgba(128, 128, 128, 0.2)',
         },
     };
     const sortIP = (a, b) => {

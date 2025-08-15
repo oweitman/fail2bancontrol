@@ -107,6 +107,30 @@ http://<host>:9191
 
 ---
 
+## Features
+
+### See active jails and their details
+
+![Jail View](img/jail.png)
+
+-   Number of current and total number of blocked and failed IPs
+-   All referred Files of this jail.
+-   all current banned IPs.
+-   Unban an IP address
+-   Ban an IP address
+
+### Access the log files of a jail
+
+If the respective log file has been mapped to the fail2banWebControl container sld volume with the same path, this log file can be displayed and continuously monitored.
+
+Example:
+
+```yaml
+volumes:
+    - ./path/to/socket.sock:/path/in/container/socket.sock
+    - ./path/to/logfile:/path/in/container/logfile
+```
+
 ## Notes & Troubleshooting
 
 -   **Permission denied**: If you get this error, your container user may not have permissions to read the socket.
@@ -120,3 +144,17 @@ http://<host>:9191
     ```
 
 -   **Port mapping**: The internal app port is controlled by `PORT` (default `9000`). External port is defined in Docker Compose or `docker run` (`9191:9000` in examples).
+
+## Changelog
+
+### Version 1.2.0
+
+-   Feature FileView
+
+### Version 1.1.0
+
+-   Move gui to mui/react
+
+### Version 1.0.0
+
+-   Initial release

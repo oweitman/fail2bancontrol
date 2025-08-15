@@ -6,7 +6,8 @@
     "image": "mcr.microsoft.com/devcontainers/base:debian",
     "mounts": [
         // Format: "source=<HOST_PATH>,target=<CONTAINER_PATH>,type=bind"
-        "source=/home/iobroker/docker/volume/nextcloud/fail2ban/socket,target=/var/run/fail2ban,type=bind"
+        "source=/home/iobroker/docker/volume/nextcloud/fail2ban/socket,target=/var/run/fail2ban,type=bind",
+        "source=/home/iobroker/docker/volume/nextcloud/nginx/log,target=/var/log/nginx,type=bind"
     ],
 
     // Features to add to the dev container. More info: https://containers.dev/features.

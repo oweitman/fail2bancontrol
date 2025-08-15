@@ -5,7 +5,7 @@ import pickle
 import json
 import re
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 # Path to the fail2ban control socket. It can be overridden via the
 # environment variable F2B_SOCKET when running the container. The socket
@@ -59,7 +59,8 @@ def send_command(command):
 
 
 def flatten_response(resp):
-    """Recursively flatten a nested list or tuple into a newline‑separated string.
+    """
+    Recursively flatten a nested list or tuple into a newline‑separated string.
 
     Fail2ban often returns complex nested lists via its socket API. To
     make parsing easier, this helper converts any nested structure
@@ -74,7 +75,7 @@ def flatten_response(resp):
 
 
 def parse_global_status(output_or_resp):
-    # 1) Bevorzugt: strukturierte Antwort
+    # 1) Preferred: structured answer
     if not isinstance(output_or_resp, str):
         d = _normalize_structured_response(output_or_resp)
         if d:
@@ -89,7 +90,7 @@ def parse_global_status(output_or_resp):
                 lst = []
             return {"jails": jails, "list": lst}
 
-    # 2) Fallback: Textausgabe wie bisher
+    # 2) Fallback: Text output as before
     output = str(output_or_resp)
     lines = output.splitlines()
     jails = 0
@@ -106,38 +107,38 @@ def parse_global_status(output_or_resp):
 
 
 def parse_jail_status(output_or_resp):
-    # 1) Strukturierte Antwort
+    # 1) Structured answer
     if not isinstance(output_or_resp, str):
         d = _normalize_structured_response(output_or_resp)
         if d:
-            # Bei aktuellen Fail2ban-Versionen liegen die Daten unter "Filter" / "Actions"
+            # In current Fail2ban versions, the data is located under "Filter" / "Actions"
             filt = d.get("Filter", {})
             act = d.get("Actions", {})
-            # Manche Varianten nutzen Kleinschreibung/abweichende Keys -> defensiv lesen
 
+            # Helper function: read defensive values
             def g(obj, *keys, default=0):
                 for k in keys:
                     if k in obj:
                         return obj[k]
                 return default
+
             currently_failed = int(
-                g(filt, "Currently failed", "currently failed", default=0) or 0)
+                g(filt, "Currently failed", "currently failed", default=0) or 0
+            )
             total_failed = int(
-                g(filt, "Total failed", "total failed", default=0) or 0)
+                g(filt, "Total failed", "total failed", default=0) or 0
+            )
+
             file_list_raw = g(filt, "File list", "file list", default=[])
-            if isinstance(file_list_raw, str):
-                file_list = [s.strip() for s in re.split(
-                    r",\s*|\s+", file_list_raw) if s.strip()]
-            elif isinstance(file_list_raw, (list, tuple)):
-                file_list = [str(x).strip()
-                             for x in file_list_raw if str(x).strip()]
-            else:
-                file_list = []
+            file_list = _process_file_list(file_list_raw)
 
             currently_banned = int(
-                g(act, "Currently banned", "currently banned", default=0) or 0)
+                g(act, "Currently banned", "currently banned", default=0) or 0
+            )
             total_banned = int(
-                g(act, "Total banned", "total banned", default=0) or 0)
+                g(act, "Total banned", "total banned", default=0) or 0
+            )
+
             banned_raw = g(act, "Banned IP list", "banned IP list", default=[])
             if isinstance(banned_raw, str):
                 banned_list = [s.strip()
@@ -161,7 +162,7 @@ def parse_jail_status(output_or_resp):
                 },
             }
 
-    # 2) Fallback: bestehender Textparser
+    # 2) Fallback: existing text parser
     output = str(output_or_resp)
     lines = output.splitlines()
     currently_failed = 0
@@ -170,6 +171,7 @@ def parse_jail_status(output_or_resp):
     currently_banned = 0
     total_banned = 0
     banned_ip_list = []
+
     for line in lines:
         m = re.search(r"Currently failed:\s*(\d+)", line)
         if m:
@@ -181,7 +183,8 @@ def parse_jail_status(output_or_resp):
             continue
         m = re.search(r"File list:\s*(.+)", line)
         if m:
-            file_list = re.split(r",?\s+", m.group(1).strip())
+            raw_files = re.split(r",?\s+", m.group(1).strip())
+            file_list = _process_file_list(raw_files)
             continue
         m = re.search(r"Currently banned:\s*(\d+)", line)
         if m:
@@ -195,12 +198,14 @@ def parse_jail_status(output_or_resp):
         if m:
             banned_ip_list = re.split(r"\s+", m.group(1).strip())
             continue
+
     banned_ip_list = [ip for ip in banned_ip_list if ip]
+
     return {
         "filter": {
             "currentlyFailed": currently_failed,
             "totalFailed": total_failed,
-            "fileList": file_list,
+            "fileList": file_list,  # now uniform {path, exists}
         },
         "actions": {
             "currentlyBanned": currently_banned,
@@ -210,8 +215,20 @@ def parse_jail_status(output_or_resp):
     }
 
 
+def _process_file_list(file_list_raw):
+    """Converts file_list_raw to a list of {path, exists} objects.""""
+    if isinstance(file_list_raw, str):
+        paths = [s.strip()
+                 for s in re.split(r",\s*|\s+", file_list_raw) if s.strip()]
+    elif isinstance(file_list_raw, (list, tuple)):
+        paths = [str(x).strip() for x in file_list_raw if str(x).strip()]
+    else:
+        paths = []
+    return [{"path": p, "exists": os.path.exists(p)} for p in paths]
+
+
 def _pairs_to_dict(obj):
-    """Wandelt rekursiv [("Key", Wert), ...] Strukturen in Dicts um."""
+    """Recursively converts [("Key", Value), ...] structures into dicts."""
     if isinstance(obj, (list, tuple)):
         if all(isinstance(x, (list, tuple)) and len(x) == 2 for x in obj):
             d = {}
@@ -223,8 +240,8 @@ def _pairs_to_dict(obj):
 
 def _normalize_structured_response(resp):
     """
-    Fail2ban liefert oft [0, [(k,v), ...]].
-    Gibt ein Dict zurück oder None, wenn nicht erkennbar.
+    Fail2ban often returns [0, [(k,v), ...]].
+    Returns a dict or None if unrecognizable.
     """
     root = resp
     if isinstance(root, (list, tuple)) and len(root) == 2 and isinstance(root[1], (list, tuple)):
@@ -277,6 +294,47 @@ class Handler(BaseHTTPRequestHandler):
                     self._set_headers()
                     self.wfile.write(json.dumps(result).encode())
                     return
+
+                if len(parts) == 1 and parts[0] == "file":
+                    # Read parameters: ?path=...&lines=...
+                    qs = parse_qs(parsed.query)
+                    file_path = qs.get("path", [""])[0]
+                    try:
+                        lines_param = int(qs.get("lines", ["0"])[0])
+                    except ValueError:
+                        lines_param = 0
+
+                    # Security check: allow absolute paths, but prevent traversal
+                    abs_path = os.path.abspath(file_path)
+                    if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
+                        self._set_headers(404)
+                        self.wfile.write(json.dumps(
+                            {"error": "File not found", "path": file_path}).encode())
+                        return
+
+                    try:
+                        with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+                            if lines_param == 0:
+                                content_lines = f.readlines()
+                            elif lines_param > 0:
+                                content_lines = [next(f) for _ in range(
+                                    lines_param) if not f.closed]
+                            else:
+                                # negative -> last n lines
+                                content_lines = f.readlines()[lines_param:]
+                    except Exception as e:
+                        self._set_headers(500)
+                        self.wfile.write(json.dumps(
+                            {"error": str(e)}).encode())
+                        return
+                    self._set_headers()
+                    self.wfile.write(json.dumps({
+                        "path": file_path,
+                        "exists": True,
+                        "lines": [line.rstrip("\n") for line in content_lines]
+                    }).encode())
+                    return
+
             except Exception as e:
                 self._set_headers(500)
                 self.wfile.write(json.dumps({"error": str(e)}).encode())

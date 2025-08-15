@@ -1,4 +1,3 @@
-import * as React from 'react';
 import {
     Card,
     CardHeader,
@@ -7,7 +6,6 @@ import {
     TableBody,
     TableCell,
     TableContainer,
-    TableHead,
     TableRow,
     Paper,
 } from '@mui/material';

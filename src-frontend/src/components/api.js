@@ -1,9 +1,9 @@
 const API_BASE = '/api';
 
 /**
- * Globalen Fail2ban Status abrufen
- * -> { jails: number, list: string[] }
- */
+* Get global fail2ban status
+* -> { jails: number, list: string[] }
+*/
 export async function getGlobalStatus() {
     const res = await fetch(`${API_BASE}/status`);
     if (!res.ok) throw new Error(`Error: ${res.status} ${res.statusText}`);
@@ -12,9 +12,9 @@ export async function getGlobalStatus() {
 }
 
 /**
- * Liste aller Jails abrufen
- * -> string[]
- */
+* Get a list of all jails
+* -> string[]
+*/
 export async function getJails() {
     const res = await fetch(`${API_BASE}/jails`);
     if (!res.ok) throw new Error(`Error: ${res.status}`);
@@ -24,9 +24,9 @@ export async function getJails() {
 }
 
 /**
- * Status für ein bestimmtes Jail abrufen
- * -> { filter: {...}, actions: {...} }
- */
+* Retrieve status for a specific jail
+* -> { filter: {...}, actions: {...} }
+*/
 export async function getJailStatus(jailName) {
     const res = await fetch(`${API_BASE}/jail/${encodeURIComponent(jailName)}/status`);
     if (!res.ok) throw new Error(`Error: ${res.status}`);
@@ -34,8 +34,8 @@ export async function getJailStatus(jailName) {
 }
 
 /**
- * IP in einem Jail bannen
- */
+* Jail an IP address
+*/
 export async function banIP(jailName, ip) {
     const res = await fetch(`${API_BASE}/jail/${encodeURIComponent(jailName)}/ban`, {
         method: 'POST',
@@ -47,14 +47,26 @@ export async function banIP(jailName, ip) {
 }
 
 /**
- * IP in einem Jail entbannen
- */
+* Unban IP in a jail
+*/
 export async function unbanIP(jailName, ip) {
     const res = await fetch(`${API_BASE}/jail/${encodeURIComponent(jailName)}/unban`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip }),
     });
+    if (!res.ok) throw new Error(`Error: ${res.status}`);
+    return res.json();
+}
+/**
+* Retrieve the contents of a file
+* @param {string} filePath - Absolute path to the file
+* @param {number} lines - Number of lines: >0 = first N, <0 = last N, 0 = entire file
+* -> { path: string, exists: boolean, lines: string[] }
+*/
+export async function getFile(filePath, lines = 0) {
+    const url = `${API_BASE}/file?path=${encodeURIComponent(filePath)}&lines=${lines}`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`Error: ${res.status}`);
     return res.json();
 }

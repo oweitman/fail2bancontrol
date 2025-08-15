@@ -8,15 +8,14 @@ import {
     TextField,
     Button,
     IconButton,
+    Chip,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 import JailValues from './JailValues.jsx';
 import BannedIPs from './BannedIPs.jsx';
-import {
-    getJailStatus,
-    banIP /* getGlobalStatus, getJailStatus, , unbanIP */,
-} from './api';
+import Filelist from './Filelist.jsx';
+import { getJailStatus, banIP } from './api';
 
 export default function Jail({ name }) {
     const [ip, setIp] = useState('');
@@ -54,6 +53,12 @@ export default function Jail({ name }) {
         textfield: {
             color: 'var(--text-color)',
         },
+        chip: {
+            flex: '0 0 140px',
+            justifyContent: 'center',
+            whiteSpace: 'nowrap',
+            backgroundColor: 'rgba(128, 128, 128, 0.2)',
+        },
     };
 
     const ipv4Regex =
@@ -68,11 +73,7 @@ export default function Jail({ name }) {
 
         try {
             await banIP(name, ip);
-
-            // Status direkt neu laden
             refreshStatus();
-
-            // Eingabe leeren
             setIp('');
         } catch (err) {
             setError(err.message || 'Network error');
@@ -86,11 +87,11 @@ export default function Jail({ name }) {
                 sx={{
                     ...styles.cardheader,
                     '& a': {
-                        color: 'inherit', // gleiche Farbe wie normaler Text
-                        textDecoration: 'none', // kein Unterstrich
+                        color: 'inherit',
+                        textDecoration: 'none',
                     },
                     '& a:hover': {
-                        textDecoration: 'underline', // optional bei Hover
+                        textDecoration: 'underline',
                     },
                 }}
                 slotProps={{
@@ -129,13 +130,7 @@ export default function Jail({ name }) {
                             }}
                         />
                     </Stack>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="body1" align="left">
-                                Logfile: {jail?.filter?.fileList.join(', ')}
-                            </Typography>
-                        </CardContent>
-                    </Card>
+                    <Filelist filelist={jail?.filter?.fileList || []} />
                     <BannedIPs
                         refreshStatus={refreshStatus}
                         name={name}
@@ -143,7 +138,7 @@ export default function Jail({ name }) {
                     />
                     <Stack direction="row" spacing={1}>
                         <TextField
-                            label="IP to Ban"
+                            label="Enter IP to Ban"
                             variant="outlined"
                             fullWidth
                             value={ip}
@@ -153,10 +148,10 @@ export default function Jail({ name }) {
                             size="small"
                             sx={{
                                 '& .MuiInputLabel-root': {
-                                    color: 'var(--text-color)', // normale Label-Farbe
+                                    color: 'var(--text-color)',
                                 },
                                 '& .MuiInputLabel-root.Mui-focused': {
-                                    color: 'var(--accent-color)', // Farbe, wenn fokussiert
+                                    color: 'var(--accent-color)',
                                 },
                             }}
                         />

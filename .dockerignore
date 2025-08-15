@@ -11,3 +11,4 @@ src-frontend/*
 !src-frontend/dist/**
 src-backend/*
 !src-backend/app.py
+img/
