@@ -216,7 +216,7 @@ def parse_jail_status(output_or_resp):
 
 
 def _process_file_list(file_list_raw):
-    """Converts file_list_raw to a list of {path, exists} objects.""""
+    """Converts file_list_raw to a list of {path, exists} objects."""
     if isinstance(file_list_raw, str):
         paths = [s.strip()
                  for s in re.split(r",\s*|\s+", file_list_raw) if s.strip()]
