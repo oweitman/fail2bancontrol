@@ -277,7 +277,15 @@ Reads a file from the host filesystem.
 
 * **Response 200**
 
-  * Body: *File read* (see model above)
+  * Body:
+
+    ```json
+    {
+      "path": "/var/log/nginx/access.log",
+      "exists": true,
+      "lines": ["<line 1>", "<line 2>", "..."]
+    }
+    ```
 
 * **Errors**
 
