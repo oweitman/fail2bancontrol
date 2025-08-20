@@ -61,13 +61,16 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.title=${{ github.event.repository.name }}
 
-      - name: Build (PRs) / Build & Push (main/tags)
+      - name: Build (PRs & main nur bauen) / Push nur bei Tags
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./dockerfile
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}  # PRs: nur bauen
+          # ✅ Nur bei Git-Tags pushen (sonst nur Build)
+          push: ${{ github.ref_type == 'tag' }}
+          # ✅ Attestations/Provenance nur wenn wir wirklich pushen
+          provenance: ${{ github.ref_type == 'tag' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
