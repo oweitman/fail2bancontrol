@@ -310,6 +310,10 @@ Reads a file from the host filesystem.
 
 ## Changelog
 
+### Version 1.3.0
+
+- automate docker push
+
 ### Version 1.2.0
 
 -   Feature FileView

@@ -1,0 +1,80 @@
+name: Build & Push to Docker Hub
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*", "release-*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: oweitman/fail2bancontrol
+
+jobs:
+  docker:
+    # 👉 Nur starten, wenn explizit gewünscht, bei Tags, oder manuell
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.ref_type == 'tag' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[build image]')) ||
+      (github.event_name == 'pull_request' && (
+        contains(github.event.pull_request.title, '[build image]') ||
+        contains(github.event.pull_request.body,  '[build image]')
+      ))
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker meta (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # main → latest + main (nur wenn commit [build image] enthält, siehe Job-IF)
+            type=ref,event=branch,enable=${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
+            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
+
+            # Git-Tags (z. B. v1.4.2) → 1.4.2, 1.4, 1
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+
+            # zusätzlich bei jedem Git-Tag → latest
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=${{ github.event.repository.name }}
+
+      - name: Build (PRs) / Build & Push (main/tags)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}  # PRs: nur bauen
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
