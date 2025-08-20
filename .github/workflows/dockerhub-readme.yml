@@ -1,0 +1,31 @@
+name: Sync Docker Hub README
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - README.md
+      - .github/workflows/dockerhub-readme.yml
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: oweitman/fail2bancontrol  # ggf. anpassen
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Docker Hub README/description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}   # Docker Hub PAT (read/write/delete)
+          repository: ${{ env.IMAGE_NAME }}          # z. B. oweitman/fail2bancontrol
+          readme-filepath: ./README.md               # Quelle in deinem Repo
+          short-description: ${{ github.event.repository.description }}
+          enable-url-completion: true                # macht relative Links absolut
