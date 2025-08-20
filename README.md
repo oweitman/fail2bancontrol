@@ -1,5 +1,18 @@
 # Fail2ban Web Control
 
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/oweitman/fail2bancontrol/dockerhub.yml?branch=main)](https://github.com/oweitman/fail2bancontrol/actions/workflows/dockerhub.yml)
+[![Github Issues](https://img.shields.io/github/issues/oweitman/fail2bancontrol?style=flat)](https://github.com/oweitman/fail2bancontrol/issues)
+[![Github Pull Requests](https://img.shields.io/github/issues-pr/oweitman/fail2bancontrol?style=flat)](https://github.com/oweitman/fail2bancontrol/pulls)<br>
+[![Arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm32v7-blue)](https://hub.docker.com/repository/docker/oweitman/fail2bancontrol)
+[![Docker Image Size (tag)](https://img.shields.io/docker/image-size/oweitman/fail2bancontrol/latest?style=flat)](https://hub.docker.com/repository/docker/oweitman/fail2bancontrol)
+[![Docker Pulls](https://img.shields.io/docker/pulls/oweitman/fail2bancontrol?style=flat)](https://hub.docker.com/repository/docker/oweitman/fail2bancontrol)
+[![Docker Stars](https://img.shields.io/docker/stars/oweitman/fail2bancontrol?style=flat)](https://hub.docker.com/repository/docker/oweitman/fail2bancontrol)<br>
+[![Source](https://img.shields.io/badge/source-github-blue?style=flat)](https://github.com/oweitman/fail2bancontrol)
+[![GitHub forks](https://img.shields.io/github/forks/oweitman/fail2bancontrol)](https://github.com/oweitman/fail2bancontrol/network)
+[![GitHub stars](https://img.shields.io/github/stars/oweitman/fail2bancontrol)](https://github.com/oweitman/fail2bancontrol/stargazers)
+[![License](https://img.shields.io/github/license/oweitman/fail2bancontrol?style=flat)](https://github.com/oweitman/fail2bancontrol/blob/main/LICENSE)
+
+
 ## Introduction
 
 This project provides a lightweight **web-based control panel** for managing **Fail2ban**.
