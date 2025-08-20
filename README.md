@@ -3,7 +3,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/oweitman/fail2bancontrol/dockerhub.yml?branch=main)](https://github.com/oweitman/fail2bancontrol/actions/workflows/dockerhub.yml)
 [![Github Issues](https://img.shields.io/github/issues/oweitman/fail2bancontrol?style=flat)](https://github.com/oweitman/fail2bancontrol/issues)
 [![Github Pull Requests](https://img.shields.io/github/issues-pr/oweitman/fail2bancontrol?style=flat)](https://github.com/oweitman/fail2bancontrol/pulls)<br>
-[![Arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm32v7-blue)](https://hub.docker.com/r/oweitman/fail2bancontrol)
+[![Arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-blue)](https://hub.docker.com/r/oweitman/fail2bancontrol)
 [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/oweitman/fail2bancontrol/latest?style=flat)](https://hub.docker.com/r/oweitman/fail2bancontrol)
 [![Docker Pulls](https://img.shields.io/docker/pulls/oweitman/fail2bancontrol?style=flat)](https://hub.docker.com/r/oweitman/fail2bancontrol)
 [![Docker Stars](https://img.shields.io/docker/stars/oweitman/fail2bancontrol?style=flat)](https://hub.docker.com/r/oweitman/fail2bancontrol)<br>
