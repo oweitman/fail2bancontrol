@@ -50,16 +50,10 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            # main → latest + main (nur wenn commit [build image] enthält, siehe Job-IF)
-            type=ref,event=branch,enable=${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
-            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
-
-            # Git-Tags (z. B. v1.4.2) → 1.4.2, 1.4, 1
-            type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-
+            # Releases (Git-Tags) → 1.2.3, 1.2, 1
+            type=semver,pattern={{version}},event=tag
+            type=semver,pattern={{major}}.{{minor}},event=tag
+            type=semver,pattern={{major}},event=tag
             # zusätzlich bei jedem Git-Tag → latest
             type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
           labels: |
