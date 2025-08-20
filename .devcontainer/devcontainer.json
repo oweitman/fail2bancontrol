@@ -41,7 +41,7 @@
     // More info: https://containers.dev/implementors/json_reference/#port-attributes
     "portsAttributes": {
         "9000": {
-            "label": "fail2banwebcontrolserver",
+            "label": "fail2bancontrolserver",
             "onAutoForward": "notify"
         }
     },

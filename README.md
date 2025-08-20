@@ -11,36 +11,14 @@ It allows you to:
 
 The application is containerized with Docker and connects directly to the `fail2ban.sock` socket file shared from your running Fail2ban instance.
 
----
+## Installation
 
-## 1) Clone the repository
-
-```bash
-git clone https://github.com/oweitman/fail2bancontrol fail2banwebcontrol
-cd fail2banwebcontrol
-```
+There are two installation options:
 
 ---
+### A) Directly from Docker Hub
 
-## 2) Build the Docker image
-
-Create a file `build-image.sh` in the repository root with the following content:
-
-```bash
-#!/usr/bin/env bash
-docker build -t fail2banwebcontrol .
-```
-
-Make it executable and run:
-
-```bash
-chmod +x build-image.sh
-./build-image.sh
-```
-
----
-
-## 3) Provide the Fail2ban socket
+#### 1) Provide the Fail2ban socket
 
 You must share the Fail2ban socket file with this container so it can communicate with the Fail2ban service.
 
@@ -52,18 +30,116 @@ volumes:
     - ./path/to/logfile:/path/in/container/logfile    
 ```
 
-## 4) Run with Docker Compose **or** via `docker run`
+#### 2) Run the container
 
-### Option A – Docker Compose
+##### Option A – Docker Compose
 
-`docker-compose.yml` example:
+`docker-compose.dockerhub` (rename it to docker-compose) example:
+
+```yaml
+version: '3.9'
+
+services:
+    fail2bancontrol:
+        image: oweitman/fail2bancontrol
+        container_name: fail2bancontrol
+
+        ports:
+            - '9191:9000'
+        volumes:
+            # Include sock file from host (adjust path!)
+            - ./path/to/socket.sock:/path/in/container/socket.sock
+            # Include log file from host (adjust path!)
+            - ./path/to/logfile:/path/in/container/logfile
+        environment:
+            TZ: Europe/Berlin
+        restart: unless-stopped
+
+```
+
+Start:
+
+```bash
+docker compose up -d
+```
+
+---
+
+##### Option B – Direct `docker run`
+
+```bash
+docker run -d \
+  --name fail2bancontrol \
+  -p 9191:9000 \
+  -e TZ=Europe/Berlin \
+  -v /path/to/directory:/var/run/fail2ban \
+  -v /path/to/logfile:/path/in/container/logfile \
+  --restart unless-stopped \
+  oweitman/fail2bancontrol
+```
+
+#### 3) Access the UI
+
+Open:
+
+```
+http://<host>:9191
+```
+
+---
+### B) Container is created locally
+
+#### 1) Clone the repository
+
+```bash
+git clone https://github.com/oweitman/fail2bancontrol fail2bancontrol
+cd fail2bancontrol
+```
+
+---
+
+#### 2) Build the Docker image
+
+Create a file `build-image.sh` in the repository root with the following content:
+
+```bash
+#!/usr/bin/env bash
+docker build -t fail2bancontrol .
+```
+
+Make it executable and run:
+
+```bash
+chmod +x build-image.sh
+./build-image.sh
+```
+
+---
+
+#### 3) Provide the Fail2ban socket
+
+You must share the Fail2ban socket file with this container so it can communicate with the Fail2ban service.
+
+Mount the directory containing the socket from inside the fail2ban container. if fail2ban is installed in the host-system you can skip this part and mount the path directly,
+
+```yaml
+volumes:
+    - /path/to/directory:/var/run/fail2ban
+    - ./path/to/logfile:/path/in/container/logfile    
+```
+
+#### 4) Run the container
+
+##### Option A – Docker Compose
+
+`docker-compose.local` (rename it to docker-compose) example:
 
 ```yaml
 version: '3.9'
 services:
-    fail2banwebcontrol:
-        image: fail2banwebcontrol:latest
-        container_name: fail2banwebcontrol
+    fail2bancontrol:
+        image: fail2bancontrol:latest
+        container_name: fail2bancontrol
 
         ports:
             - '9191:9000'
@@ -87,20 +163,20 @@ docker compose up -d
 
 ---
 
-### Option B – Direct `docker run`
+##### Option B – Direct `docker run`
 
 ```bash
 docker run -d \
-  --name fail2banwebcontrol \
+  --name fail2bancontrol \
   -p 9191:9000 \
   -e TZ=Europe/Berlin \
   -v /path/to/directory:/var/run/fail2ban \
   -v /path/to/logfile:/path/in/container/logfile \
   --restart unless-stopped \
-  fail2banwebcontrol:latest
+  fail2bancontrol:latest
 ```
 
-## 5) Access the UI
+#### 5) Access the UI
 
 Open:
 
@@ -124,7 +200,7 @@ http://<host>:9191
 
 ### Access the log files of a jail
 
-If the respective log file has been mapped to the fail2banWebControl container sld volume with the same path, this log file can be displayed and continuously monitored.
+If the respective log file has been mapped to the fail2bancontrol container sld volume with the same path, this log file can be displayed and continuously monitored.
 
 Example:
 
@@ -303,7 +379,7 @@ Reads a file from the host filesystem.
 -   **Verify the socket inside the container**:
 
     ```bash
-    docker exec -it fail2banwebcontrol ls -l /var/run/fail2ban
+    docker exec -it fail2bancontrol ls -l /var/run/fail2ban
     ```
 
 -   **Port mapping**: The internal app port is controlled by `PORT` (default `9000`). External port is defined in Docker Compose or `docker run` (`9191:9000` in examples).

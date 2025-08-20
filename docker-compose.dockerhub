@@ -1,9 +1,9 @@
 version: '3.9'
 
 services:
-    fail2banwebcontrol:
-        image: fail2banwebcontrol:latest
-        container_name: fail2banwebcontrol
+    fail2bancontrol:
+        image: oweitman/fail2bancontrol
+        container_name: fail2bancontrol
 
         ports:
             - '9191:9000'

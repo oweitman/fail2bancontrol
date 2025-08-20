@@ -11,7 +11,7 @@
     {
       "label": "docker: build image",
       "type": "shell",
-      "command": "docker build -t fail2banwebcontrol .",
+      "command": "docker build -t fail2bancontrol .",
       "dependsOn": ["frontend: build"],
       "problemMatcher": []
     }
