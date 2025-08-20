@@ -50,12 +50,14 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            # Releases (Git-Tags) → 1.2.3, 1.2, 1
+            # Releases (Git-Tags) → 1.2.3, 1.2, 1 + latest
             type=semver,pattern={{version}},event=tag
             type=semver,pattern={{major}}.{{minor}},event=tag
             type=semver,pattern={{major}},event=tag
-            # zusätzlich bei jedem Git-Tag → latest
             type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+
+            # NEU: bei Push auf main mit Commit-Flag oder bei manuellem Run → latest
+            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build image]')) }}
           labels: |
             org.opencontainers.image.source=${{ github.repositoryUrl }}
             org.opencontainers.image.revision=${{ github.sha }}
