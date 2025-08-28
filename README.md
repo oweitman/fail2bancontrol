@@ -12,7 +12,6 @@
 [![GitHub stars](https://img.shields.io/github/stars/oweitman/fail2bancontrol)](https://github.com/oweitman/fail2bancontrol/stargazers)
 ![GitHub License](https://img.shields.io/github/license/oweitman/fail2bancontrol)
 
-
 ## Introduction
 
 This project provides a lightweight **web-based control panel** for managing **Fail2ban**.
@@ -29,6 +28,7 @@ The application is containerized with Docker and connects directly to the `fail2
 There are two installation options:
 
 ---
+
 ### A) Directly from Docker Hub
 
 #### 1) Provide the Fail2ban socket
@@ -40,7 +40,7 @@ Mount the directory containing the socket from inside the fail2ban container. if
 ```yaml
 volumes:
     - /path/to/directory:/var/run/fail2ban
-    - ./path/to/logfile:/path/in/container/logfile    
+    - ./path/to/logfile:/path/in/container/logfile
 ```
 
 #### 2) Run the container
@@ -67,7 +67,6 @@ services:
         environment:
             TZ: Europe/Berlin
         restart: unless-stopped
-
 ```
 
 Start:
@@ -100,6 +99,7 @@ http://<host>:9191
 ```
 
 ---
+
 ### B) Container is created locally
 
 #### 1) Clone the repository
@@ -138,7 +138,7 @@ Mount the directory containing the socket from inside the fail2ban container. if
 ```yaml
 volumes:
     - /path/to/directory:/var/run/fail2ban
-    - ./path/to/logfile:/path/in/container/logfile    
+    - ./path/to/logfile:/path/in/container/logfile
 ```
 
 #### 4) Run the container
@@ -222,26 +222,27 @@ volumes:
     - ./path/to/socket.sock:/path/in/container/socket.sock
     - ./path/to/logfile:/path/in/container/logfile
 ```
+
 ## Available API
 
 ### GET `/api/status`
 
 Returns the **global** fail2ban status: number of jails and their names.
 
-* **Response 200**
+-   **Response 200**
 
-  Body: 
+    Body:
 
     ```json
     {
-    "jails": 3,
-    "list": ["sshd", "nginx-http-auth", "recidive"]
+        "jails": 3,
+        "list": ["sshd", "nginx-http-auth", "recidive"]
     }
     ```
 
-* **Errors**
+-   **Errors**
 
-  * `500`: `{ "error": "<message>" }` if the socket call fails
+    -   `500`: `{ "error": "<message>" }` if the socket call fails
 
 ---
 
@@ -249,13 +250,13 @@ Returns the **global** fail2ban status: number of jails and their names.
 
 Returns the **array of jail names**.
 
-* **Response 200**
+-   **Response 200**
 
-  * Body: `["sshd", "nginx-http-auth", ...]`
+    -   Body: `["sshd", "nginx-http-auth", ...]`
 
-* **Errors**
+-   **Errors**
 
-  * `500`: `{ "error": "<message>" }`
+    -   `500`: `{ "error": "<message>" }`
 
 ---
 
@@ -263,35 +264,35 @@ Returns the **array of jail names**.
 
 Returns detailed status for a specific jail.
 
-* **Path params**
+-   **Path params**
 
-  * `jail` — jail name (case-sensitive as known to fail2ban)
+    -   `jail` — jail name (case-sensitive as known to fail2ban)
 
-* **Response 200**
+-   **Response 200**
 
-  * Body:
+    -   Body:
 
-    ```json
-    {
-        "filter": {
-            "currentlyFailed": 2,
-            "totalFailed": 431,
-            "fileList": [
-                { "path": "/var/log/auth.log", "exists": true },
-                { "path": "/var/log/secure",   "exists": false }
-            ]
-        },
-        "actions": {
-            "currentlyBanned": 1,
-            "totalBanned": 37,
-            "bannedIPList": ["203.0.113.7"]
+        ```json
+        {
+            "filter": {
+                "currentlyFailed": 2,
+                "totalFailed": 431,
+                "fileList": [
+                    { "path": "/var/log/auth.log", "exists": true },
+                    { "path": "/var/log/secure", "exists": false }
+                ]
+            },
+            "actions": {
+                "currentlyBanned": 1,
+                "totalBanned": 37,
+                "bannedIPList": ["203.0.113.7"]
+            }
         }
-    }
-    ```
+        ```
 
-* **Errors**
+-   **Errors**
 
-  * `500`: `{ "error": "<message>" }` (e.g., unknown jail, socket error)
+    -   `500`: `{ "error": "<message>" }` (e.g., unknown jail, socket error)
 
 ---
 
@@ -299,29 +300,29 @@ Returns detailed status for a specific jail.
 
 Bans a single IPv4 address in the given jail.
 
-* **Path params**
+-   **Path params**
 
-  * `jail` — jail name
+    -   `jail` — jail name
 
-* **Request Body (JSON)**
+-   **Request Body (JSON)**
 
-  ```json
-  { "ip": "198.51.100.42" }
-  ```
+    ```json
+    { "ip": "198.51.100.42" }
+    ```
 
-  * Must be a **valid IPv4** address (IPv6 is not accepted by this API).
+    -   Must be a **valid IPv4** address (IPv6 is not accepted by this API).
 
-* **Response 200**
+-   **Response 200**
 
-  ```json
-  { "result": "<fail2ban textual response>" }
-  ```
+    ```json
+    { "result": "<fail2ban textual response>" }
+    ```
 
-* **Errors**
+-   **Errors**
 
-  * `400`: `{ "error": "A valid IPv4 address must be provided in the body as \"ip\"" }`
-  * `500`: `{ "error": "<message>" }` (socket or fail2ban error)
-  * `404`: `{ "error": "Not found4" }` if the route does not match
+    -   `400`: `{ "error": "A valid IPv4 address must be provided in the body as \"ip\"" }`
+    -   `500`: `{ "error": "<message>" }` (socket or fail2ban error)
+    -   `404`: `{ "error": "Not found4" }` if the route does not match
 
 ---
 
@@ -329,25 +330,25 @@ Bans a single IPv4 address in the given jail.
 
 Unbans a single IPv4 address in the given jail.
 
-* **Path params**
+-   **Path params**
 
-  * `jail` — jail name
+    -   `jail` — jail name
 
-* **Request Body (JSON)**
+-   **Request Body (JSON)**
 
-  ```json
-  { "ip": "198.51.100.42" }
-  ```
+    ```json
+    { "ip": "198.51.100.42" }
+    ```
 
-* **Response 200**
+-   **Response 200**
 
-  ```json
-  { "result": "<fail2ban textual response>" }
-  ```
+    ```json
+    { "result": "<fail2ban textual response>" }
+    ```
 
-* **Errors**
+-   **Errors**
 
-  * Same as for **ban**.
+    -   Same as for **ban**.
 
 ---
 
@@ -355,31 +356,31 @@ Unbans a single IPv4 address in the given jail.
 
 Reads a file from the host filesystem.
 
-* **Query params**
+-   **Query params**
 
-  * `path` (required): absolute or relative path (resolved to absolute); must point to a regular file.
-  * `lines` (optional, integer):
+    -   `path` (required): absolute or relative path (resolved to absolute); must point to a regular file.
+    -   `lines` (optional, integer):
 
-    * `0` or omitted → **entire file**
-    * Positive `n` → **first *n* lines**
-    * Negative `-n` → **last *n* lines**
+        -   `0` or omitted → **entire file**
+        -   Positive `n` → **first _n_ lines**
+        -   Negative `-n` → **last _n_ lines**
 
-* **Response 200**
+-   **Response 200**
 
-  * Body:
+    -   Body:
 
-    ```json
-    {
-      "path": "/var/log/nginx/access.log",
-      "exists": true,
-      "lines": ["<line 1>", "<line 2>", "..."]
-    }
-    ```
+        ```json
+        {
+            "path": "/var/log/nginx/access.log",
+            "exists": true,
+            "lines": ["<line 1>", "<line 2>", "..."]
+        }
+        ```
 
-* **Errors**
+-   **Errors**
 
-  * `404`: `{ "error": "File not found", "path": "<given path>" }`
-  * `500`: `{ "error": "<message>" }` (I/O error, encoding error)
+    -   `404`: `{ "error": "File not found", "path": "<given path>" }`
+    -   `500`: `{ "error": "<message>" }` (I/O error, encoding error)
 
 > Security note: The code resolves to an absolute path and requires the path to exist and be a file. There is no allow-list; consider hardening behind a proxy.
 
@@ -399,9 +400,19 @@ Reads a file from the host filesystem.
 
 ## Changelog
 
+<!-- CHANGELOG:INSERT -->
+
+-   add version
+-   add workflow actions for release and version
+
+### Version 1.4.0
+
+-   improve backend logic für prod and dev
+-   add footer with links
+
 ### Version 1.3.0
 
-- automate docker push
+-   automate docker push
 
 ### Version 1.2.0
 
