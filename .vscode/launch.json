@@ -5,11 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Program Debug",
-            "program": "${workspaceFolder}/src-backend/app.js",
+            "name": "Launch Chrome",
             "request": "launch",
-            "skipFiles": ["<node_internals>/**"],
-            "type": "node"
+            "type": "chrome",
+            "url": "http://localhost:9000",
+            "webRoot": "${workspaceFolder}/src-frontend",
+            "sourceMapPathOverrides": {
+                // Map runtime /public/... zu lokal /src-frontend/dist/...
+                "/*": "${workspaceFolder}/src-frontend/dist/*",
+                "/public/*": "${workspaceFolder}/src-frontend/dist/*",
+
+                // Optional: Default für node_modules, wenn relevant
+                "webpack:///./~/*": "${workspaceFolder}/node_modules/*",
+                "webpack:///src/*": "${workspaceFolder}/src-frontend/*"
+            }
         },
         {
             "name": "Python backend",
@@ -18,7 +27,11 @@
             "program": "${workspaceFolder}/src-backend/app.py",
             "args": ["run", "--host", "0.0.0.0", "--port", "9000"],
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "STATIC_ROOT": "${workspaceFolder}/src-frontend/dist"
+            }
         }
     ]
 }
