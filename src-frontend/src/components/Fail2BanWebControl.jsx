@@ -3,7 +3,7 @@ import { Box, Stack, Typography } from '@mui/material';
 import f2bLogo from '../assets/fail2ban-logo.png';
 import Jail from './Jail.jsx';
 import Overview from './Overview.jsx';
-
+import Footer from './Footer.jsx';
 import { getGlobalStatus } from './api';
 
 export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
@@ -40,6 +40,7 @@ export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
             {status?.list?.map((jail) => (
                 <Jail key={jail} name={jail} />
             ))}
+            <Footer />
         </Box>
     );
 }
