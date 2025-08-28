@@ -5,10 +5,20 @@ const path = require('path');
 const { execSync } = require('child_process');
 const readline = require('readline');
 
-const PKG_PATH = path.join(process.cwd(), 'package.json');
-const README_PATH = path.join(process.cwd(), '../README.md');
-const CHANGELOG_MARKER = '<!-- CHANGELOG:INSERT -->'; // <<< anpassen, falls nötig
-const DO_TAG = process.env.NO_TAG ? false : true; // setze NO_TAG=1 um Tagging zu überspringen
+const REPO_ROOT = path.join(process.cwd(), '..');          // script lives in src-frontend/
+const FRONTEND_DIR = process.cwd();                        // = src-frontend
+const BUILD_DIR_NAME = process.env.BUILD_DIR || 'dist';
+const BUILD_DIR = path.join(FRONTEND_DIR, BUILD_DIR_NAME);
+
+const PKG_PATH = path.join(FRONTEND_DIR, 'package.json'); // src-frontend/package.json
+const README_PATH = path.join(REPO_ROOT, 'README.md');    // ../README.md
+const CHANGELOG_MARKER = '<!-- CHANGELOG:INSERT -->';
+const DO_TAG = process.env.NO_TAG ? false : true;         // set NO_TAG=1 to skip tagging
+
+// clean env (removes e.g. VS Code Auto-Attach NODE_OPTIONS)
+const CLEAN_ENV = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => k !== 'NODE_OPTIONS')
+);
 
 function readJson(p) {
     return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -17,7 +27,6 @@ function writeJson(p, obj) {
     fs.writeFileSync(p, JSON.stringify(obj, null, 2) + '\n', 'utf8');
 }
 function bumpSemver(v, kind) {
-    // sehr simple SemVer (x.y.z), ignoriert pre-release/build
     const [maj, min, pat] = String(v).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
     if (kind === 'major') return `${maj + 1}.0.0`;
     if (kind === 'minor') return `${maj}.${min + 1}.0`;
@@ -31,57 +40,67 @@ function formatDateISO(d = new Date()) {
 }
 function updateReadme(version) {
     if (!fs.existsSync(README_PATH)) {
-        console.warn('README.md nicht gefunden – überspringe Changelog-Update.');
+        console.warn('README.md not found — skipping changelog update.');
         return;
     }
     const raw = fs.readFileSync(README_PATH, 'utf8');
-    const line = `### v${version} – ${formatDateISO()}`;
+    const line = `### v${version} — ${formatDateISO()}`;
     if (raw.includes(CHANGELOG_MARKER)) {
         const updated = raw.replace(CHANGELOG_MARKER, `${CHANGELOG_MARKER}\n${line}`);
         fs.writeFileSync(README_PATH, updated, 'utf8');
-        console.log(`README.md: Eintrag unter Marker eingefügt.`);
+        console.log('README.md: Inserted entry below marker.');
     } else {
-        // Fallback: an den Anfang anhängen
         const updated = `## Changelog\n\n${line}\n` + raw;
         fs.writeFileSync(README_PATH, updated, 'utf8');
-        console.log(`README.md: Marker nicht gefunden – Changelog-Block vorn ergänzt.`);
+        console.log('README.md: Marker not found — prepended a changelog block.');
     }
 }
 
-function sh(cmd) {
-    return execSync(cmd, { stdio: 'inherit' });
+function sh(cmd, opts = {}) {
+    return execSync(cmd, { stdio: 'inherit', env: CLEAN_ENV, ...opts });
 }
 
-/** Prüft, ob ungestagte oder gestagte (aber nicht committete) Änderungen vorliegen. */
+/** Ensures there are no unstaged or staged-but-uncommitted changes. */
 function assertNoUnstagedChanges() {
     try {
-        // Exit-Code != 0, wenn ungestagte Änderungen existieren
+        // Working Tree vs Index
         execSync('git diff --quiet', { stdio: 'ignore' });
     } catch {
         console.error(
-            '\n❌ Abbruch: Es liegen ungestagte Änderungen vor.\n' +
-            'Bitte zuerst committen oder stashen (z. B. `git add -A && git commit -m "WIP"` oder `git stash`).\n'
+            '\n❌ Aborting: There are unstaged changes.\n' +
+            'Please commit or stash first (e.g., `git add -A && git commit -m "WIP"` or `git stash`).\n'
         );
         process.exit(1);
     }
-
     try {
-        // Exit-Code != 0, wenn gestagte Änderungen existieren, die noch nicht committet wurden
+        // Index vs HEAD
         execSync('git diff --cached --quiet', { stdio: 'ignore' });
     } catch {
         console.error(
-            '\n❌ Abbruch: Es liegen gestagte, aber noch nicht committete Änderungen vor.\n' +
-            'Bitte zuerst committen oder resetten.\n'
+            '\n❌ Aborting: There are staged but uncommitted changes.\n' +
+            'Please commit or reset them first.\n'
         );
         process.exit(1);
+    }
+}
+
+/** Aborts if the path is ignored by .gitignore */
+function assertNotIgnoredInGit(p) {
+    try {
+        // exit 0 => ignored, exit 1 => not ignored (we treat 1 as "ok" via the catch)
+        execSync(`git check-ignore -q -- "${p}"`, { stdio: 'ignore' });
+        console.error(`\n❌ Aborting: "${p}" is ignored by .gitignore. Please adjust it or the build cannot be committed.\n`);
+        process.exit(1);
+    } catch {
+        // not ignored -> ok
     }
 }
 
 async function askBump(current) {
-    console.log(`Aktuelle Version in package.json: ${current}`);
-    console.log('Was möchtest du erhöhen? [m]ajor / [i]minor / [p]patch');
+    console.log(`Current version in src-frontend/package.json: ${current}`);
+    console.log('What do you want to bump? [m]ajor / [i]minor / [p]atch');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    const answer = await new Promise(res => rl.question('Auswahl (m/i/p): ', res));
+    const answer = await new Promise(res => rl.question('Choice (m/i/p): ', res));
     rl.close();
     const a = (answer || '').trim().toLowerCase();
     if (a === 'm' || a === 'major') return 'major';
@@ -89,56 +108,79 @@ async function askBump(current) {
     return 'patch';
 }
 
-(async function main() {
-    // 0) Vorab: ungestagte Änderungen verbieten
-    assertNoUnstagedChanges();
-
-    // 1) Version lesen
+(function ensurePaths() {
     if (!fs.existsSync(PKG_PATH)) {
-        console.error(`package.json nicht gefunden unter: ${PKG_PATH}`);
+        console.error(`package.json not found at: ${PKG_PATH}`);
         process.exit(1);
     }
+    assertNotIgnoredInGit(BUILD_DIR); // early check
+})();
+
+(async function main() {
+    // 0) Clean state
+    assertNoUnstagedChanges();
+
+    // 1) Read version
     const pkg = readJson(PKG_PATH);
     const cur = pkg.version || '0.0.0';
 
-    // 2) Auswahl fragen
+    // 2) Ask what to bump
     const kind = await askBump(cur);
     const next = bumpSemver(cur, kind);
 
-    // 3) Version schreiben
+    // 3) Write version
     pkg.version = next;
     writeJson(PKG_PATH, pkg);
-    console.log(`Version gebumpt: ${cur} -> ${next}`);
+    console.log(`Version bumped: ${cur} -> ${next}`);
 
-    // 4) README Changelog aktualisieren (Platzhalter)
+    // 4) Update README changelog
     updateReadme(next);
 
-    // 5) Commit & Push
+    // 5) **Frontend build before release** (in src-frontend)
+    console.log(`\n🛠  Building frontend in ${FRONTEND_DIR} …`);
     try {
-        sh(`git add "${PKG_PATH}" "${README_PATH}"`);
-    } catch {
-        // README evtl. nicht vorhanden
-        sh(`git add "${PKG_PATH}"`);
+        sh('npm run build', { cwd: FRONTEND_DIR });
+    } catch (e) {
+        console.error('\n❌ Build failed. Aborting release.\n');
+        process.exit(1);
     }
-    sh(`git commit -m "chore(release): v${next}"`);
+    if (!fs.existsSync(BUILD_DIR)) {
+        console.error(`\n❌ Build output "${BUILD_DIR}" not found. Please check your build configuration.\n`);
+        process.exit(1);
+    }
+
+    // 6) Commit & push (version + README + build output)
+    try {
+        if (fs.existsSync(README_PATH)) {
+            sh(`git add "${PKG_PATH}" "${README_PATH}" "${BUILD_DIR}"`);
+        } else {
+            sh(`git add "${PKG_PATH}" "${BUILD_DIR}"`);
+        }
+    } catch {
+        // Fallback: add -A for the build folder
+        sh(`git add -A "${BUILD_DIR}"`);
+        sh(`git add "${PKG_PATH}"`);
+        if (fs.existsSync(README_PATH)) sh(`git add "${README_PATH}"`);
+    }
+
+    sh(`git commit -m "chore(release): v${next} (build)"`);
     sh(`git push`);
 
-    // 6) Optional: Tag erstellen & pushen (lokal, NICHT in Action)
+    // 7) Optional: create & push tag
     if (DO_TAG) {
         const tag = `v${next}`;
         try {
             sh(`git tag ${tag}`);
             sh(`git push origin ${tag}`);
-            console.log(`Tag ${tag} erstellt & gepusht.`);
-        } catch (e) {
-            console.warn(`Konnte Tag ${tag} nicht erstellen/pushen. Du kannst das manuell tun:`);
-            console.warn(`  git tag ${tag} && git push origin ${tag}`);
+            console.log(`Tag ${tag} created & pushed.`);
+        } catch {
+            console.warn(`Could not create/push tag ${tag}. Manually run:\n  git tag ${tag} && git push origin ${tag}`);
         }
     } else {
-        console.log('NO_TAG aktiv – Tagging übersprungen.');
+        console.log('NO_TAG is set — skipping tagging.');
     }
 
-    console.log('\n✅ Fertig. Der Release-Workflow sollte jetzt laufen (durch package.json-Änderung und/oder vorhandenen Tag).');
+    console.log('\n✅ Done. Build committed and release commit pushed.');
 })().catch(err => {
     console.error(err);
     process.exit(1);

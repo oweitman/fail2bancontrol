@@ -401,6 +401,10 @@ Reads a file from the host filesystem.
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+
+-   recreate frontend sources
+-   improve release script
+
 ### v1.5.0 – 2025-08-28
 
 -   add version
