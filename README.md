@@ -401,6 +401,7 @@ Reads a file from the host filesystem.
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+### v1.5.0 – 2025-08-28
 
 -   add version
 -   add workflow actions for release and version
