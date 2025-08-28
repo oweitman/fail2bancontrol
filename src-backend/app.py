@@ -16,6 +16,15 @@ SOCKET_PATH = os.getenv('F2B_SOCKET', '/var/run/fail2ban/fail2ban.sock')
 # Marker used by the fail2ban server to delimit pickle messages. See
 # the fail2ban protocol documentation for details【677544076733056†L200-L205】.
 END_MARKER = b"<F2B_END_COMMAND>"
+STATIC_ROOT = os.path.abspath(os.getenv("STATIC_ROOT", "public"))
+
+
+def _safe_join_static(relpath: str) -> str:
+    abs_path = os.path.abspath(os.path.join(STATIC_ROOT, relpath.lstrip("/")))
+    # Directory Traversal verhindern
+    if not abs_path.startswith(STATIC_ROOT + os.sep) and abs_path != STATIC_ROOT:
+        return ""
+    return abs_path
 
 
 def send_command(command):
@@ -341,19 +350,25 @@ class Handler(BaseHTTPRequestHandler):
                 return
         # Static file serving
         if path == "/" or path == "":
-            path = "/index.html"
-        file_path = os.path.join("public", path.lstrip("/"))
-        # Prevent directory traversal
-        if not os.path.abspath(file_path).startswith(os.path.abspath("public")):
+            rel = "index.html"
+        elif path.startswith("/public/"):
+            rel = path[len("/public/"):]
+        else:
+            rel = path.lstrip("/")
+
+        file_path = _safe_join_static(rel)
+        if not file_path:
             self._set_headers(404, "text/plain")
-            self.wfile.write(b"Not found1")
+            self.wfile.write(b"Not found (path)")
             return
+
         if os.path.exists(file_path) and os.path.isfile(file_path):
             ext = os.path.splitext(file_path)[1].lower()
             content_types = {
                 ".html": "text/html",
                 ".css": "text/css",
                 ".js": "application/javascript",
+                ".mjs": "application/javascript",
                 ".json": "application/json",
                 ".png": "image/png",
                 ".jpg": "image/jpeg",
@@ -361,6 +376,10 @@ class Handler(BaseHTTPRequestHandler):
                 ".gif": "image/gif",
                 ".svg": "image/svg+xml",
                 ".ico": "image/x-icon",
+                ".map": "application/json",
+                ".woff": "font/woff",
+                ".woff2": "font/woff2",
+                ".ttf": "font/ttf",
             }
             ctype = content_types.get(ext, "application/octet-stream")
             try:
@@ -373,7 +392,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(str(e).encode())
         else:
             self._set_headers(404, "text/plain")
-            self.wfile.write(b"Not found2")
+            self.wfile.write(b"Not found")
 
     def do_POST(self):
         parsed = urlparse(self.path)
