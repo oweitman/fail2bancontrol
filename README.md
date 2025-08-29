@@ -8,6 +8,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/oweitman/fail2bancontrol?style=flat)](https://hub.docker.com/r/oweitman/fail2bancontrol)
 [![Docker Stars](https://img.shields.io/docker/stars/oweitman/fail2bancontrol?style=flat)](https://hub.docker.com/r/oweitman/fail2bancontrol)<br>
 [![Source](https://img.shields.io/badge/source-github-blue?style=flat)](https://github.com/oweitman/fail2bancontrol)
+[![GitHub Release](https://img.shields.io/github/v/release/oweitman/fail2bancontrol?style=flat)](https://github.com/oweitman/fail2bancontrol)
 [![GitHub forks](https://img.shields.io/github/forks/oweitman/fail2bancontrol)](https://github.com/oweitman/fail2bancontrol/network)
 [![GitHub stars](https://img.shields.io/github/stars/oweitman/fail2bancontrol)](https://github.com/oweitman/fail2bancontrol/stargazers)
 ![GitHub License](https://img.shields.io/github/license/oweitman/fail2bancontrol)
@@ -401,6 +402,7 @@ Reads a file from the host filesystem.
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+
 ### v1.5.1 — 2025-08-28
 
 -   recreate frontend sources
