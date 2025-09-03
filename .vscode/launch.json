@@ -7,18 +7,10 @@
         {
             "name": "Launch Chrome",
             "request": "launch",
-            "type": "chrome",
-            "url": "http://localhost:9000",
+            "type": "chrome", // oder: "pwa-chrome"
+            "url": "http://localhost:5173/",
             "webRoot": "${workspaceFolder}/src-frontend",
-            "sourceMapPathOverrides": {
-                // Map runtime /public/... zu lokal /src-frontend/dist/...
-                "/*": "${workspaceFolder}/src-frontend/dist/*",
-                "/public/*": "${workspaceFolder}/src-frontend/dist/*",
-
-                // Optional: Default für node_modules, wenn relevant
-                "webpack:///./~/*": "${workspaceFolder}/node_modules/*",
-                "webpack:///src/*": "${workspaceFolder}/src-frontend/*"
-            }
+            "preLaunchTask": "frontend: dev"
         },
         {
             "name": "Python backend",

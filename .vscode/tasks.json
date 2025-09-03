@@ -1,19 +1,40 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "frontend: build",
-      "type": "shell",
-      "command": "npm run build",
-      "options": { "cwd": "${workspaceFolder}/src-frontend" },
-      "problemMatcher": []
-    },
-    {
-      "label": "docker: build image",
-      "type": "shell",
-      "command": "docker build -t fail2bancontrol .",
-      "dependsOn": ["frontend: build"],
-      "problemMatcher": []
-    }
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "frontend: build",
+            "type": "shell",
+            "command": "npm run build",
+            "options": { "cwd": "${workspaceFolder}/src-frontend" },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: build image",
+            "type": "shell",
+            "command": "docker build -t fail2bancontrol .",
+            "dependsOn": ["frontend: build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "frontend: dev",
+            "type": "npm",
+            "script": "dev",
+            "path": "src-frontend",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "vite",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(.*)$",
+                    "file": 1,
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^[^\\S\\r\\n]*(?:vite|VITE) v\\d+\\.\\d+\\.\\d+",
+                    "endsPattern": "Local:\\s+http://(?:localhost|127\\.0\\.0\\.1):5173/?"
+                }
+            }
+        }
+    ]
 }
