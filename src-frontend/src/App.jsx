@@ -21,7 +21,7 @@ const getDesignTokens = (themeMode) => ({
               }
             : {
                   background: { default: '#121212', paper: '#1e1e1e' },
-                  text: { primary: '#e0e0e0' },
+                  text: { primary: '#e0e0e0', secondary: '#8c8c8c' },
                   divider: '#333333',
                   primary: { main: '#4e8ef7' },
               }),

@@ -403,6 +403,15 @@ Reads a file from the host filesystem.
 
 <!-- CHANGELOG:INSERT -->
 
+-   add more api endpoints
+-   add server control buttons start, stop, restart, reload
+-   change theme switch button
+-   add server version
+-   add dbfile location
+-   add log level slider
+-   add dbmaxmatches
+-   add dbpurgeage
+
 ### v1.5.1 — 2025-08-28
 
 -   recreate frontend sources

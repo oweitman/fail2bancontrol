@@ -13,38 +13,55 @@ from urllib.parse import urlparse, parse_qs
 # communicate with the running fail2ban server.
 SOCKET_PATH = os.getenv('F2B_SOCKET', '/var/run/fail2ban/fail2ban.sock')
 
-# Marker used by the fail2ban server to delimit pickle messages. See
-# the fail2ban protocol documentation for details【677544076733056†L200-L205】.
+# Marker used by the fail2ban server to delimit pickle messages.
 END_MARKER = b"<F2B_END_COMMAND>"
 STATIC_ROOT = os.path.abspath(os.getenv("STATIC_ROOT", "public"))
+
+# -------- helpers -------------------------------------------------------------
 
 
 def _safe_join_static(relpath: str) -> str:
     abs_path = os.path.abspath(os.path.join(STATIC_ROOT, relpath.lstrip("/")))
-    # Directory Traversal verhindern
+    # prevent directory traversal
     if not abs_path.startswith(STATIC_ROOT + os.sep) and abs_path != STATIC_ROOT:
         return ""
     return abs_path
 
 
-def send_command(command):
-    """Send a command to the fail2ban socket and return the unpickled response.
+def _is_valid_ipv4(ip: str) -> bool:
+    return bool(re.match(r"^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$", ip or ""))
 
-    The command can be provided as a string (e.g. "status sshd") or as
-    a list of arguments (e.g. ["status", "sshd"]). The function
-    serialises the command using Python's pickle module and appends
-    the END_MARKER to comply with the fail2ban protocol【677544076733056†L200-L205】.
-    It then reads data from the socket until the marker is seen, strips
-    the marker, and attempts to unpickle the response. If unpickling
-    fails, the raw bytes are returned as a UTF‑8 string.
+
+def _bool(v, default=False):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    if isinstance(v, str):
+        return v.strip().lower() in ("1", "true", "yes", "on")
+    return default
+
+
+def _json(self, status=200, obj=None, ctype="application/json"):
+    self.send_response(status)
+    self.send_header("Content-Type", ctype)
+    self.end_headers()
+    if obj is not None:
+        self.wfile.write(json.dumps(obj).encode())
+
+# -------- socket bridge -------------------------------------------------------
+
+
+def send_command(command):
+    """
+    Send a command to the fail2ban socket and return the unpickled response.
+    Accepts a string (e.g. "status sshd") or a list of args (["status","sshd"]).
     """
     if isinstance(command, str):
         args = command.strip().split()
     else:
         args = command
-    # Serialise the arguments into a pickle payload. Use protocol 0 (ASCII)
-    # to maximise compatibility with older versions of fail2ban, which
-    # expect default pickle format【677544076733056†L200-L205】.
+
     payload = pickle.dumps(list(args), protocol=0)
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.connect(SOCKET_PATH)
@@ -68,23 +85,17 @@ def send_command(command):
 
 
 def flatten_response(resp):
-    """
-    Recursively flatten a nested list or tuple into a newline‑separated string.
-
-    Fail2ban often returns complex nested lists via its socket API. To
-    make parsing easier, this helper converts any nested structure
-    into a flat string where each element is separated by a newline.
-    """
+    """Recursively flatten nested lists/tuples to a newline-separated string."""
     if isinstance(resp, (list, tuple)):
-        parts = []
-        for item in resp:
-            parts.append(flatten_response(item))
+        parts = [flatten_response(item) for item in resp]
         return "\n".join(part for part in parts if part)
     return str(resp)
 
+# -------- parsers -------------------------------------------------------------
+
 
 def parse_global_status(output_or_resp):
-    # 1) Preferred: structured answer
+    # structured preferred
     if not isinstance(output_or_resp, str):
         d = _normalize_structured_response(output_or_resp)
         if d:
@@ -99,7 +110,7 @@ def parse_global_status(output_or_resp):
                 lst = []
             return {"jails": jails, "list": lst}
 
-    # 2) Fallback: Text output as before
+    # fallback text
     output = str(output_or_resp)
     lines = output.splitlines()
     jails = 0
@@ -116,15 +127,13 @@ def parse_global_status(output_or_resp):
 
 
 def parse_jail_status(output_or_resp):
-    # 1) Structured answer
+    # structured
     if not isinstance(output_or_resp, str):
         d = _normalize_structured_response(output_or_resp)
         if d:
-            # In current Fail2ban versions, the data is located under "Filter" / "Actions"
             filt = d.get("Filter", {})
             act = d.get("Actions", {})
 
-            # Helper function: read defensive values
             def g(obj, *keys, default=0):
                 for k in keys:
                     if k in obj:
@@ -132,23 +141,18 @@ def parse_jail_status(output_or_resp):
                 return default
 
             currently_failed = int(
-                g(filt, "Currently failed", "currently failed", default=0) or 0
-            )
+                g(filt, "Currently failed", "currently failed", default=0) or 0)
             total_failed = int(
-                g(filt, "Total failed", "total failed", default=0) or 0
-            )
-
+                g(filt, "Total failed", "total failed", default=0) or 0)
             file_list_raw = g(filt, "File list", "file list", default=[])
             file_list = _process_file_list(file_list_raw)
 
             currently_banned = int(
-                g(act, "Currently banned", "currently banned", default=0) or 0
-            )
+                g(act, "Currently banned", "currently banned", default=0) or 0)
             total_banned = int(
-                g(act, "Total banned", "total banned", default=0) or 0
-            )
-
+                g(act, "Total banned", "total banned", default=0) or 0)
             banned_raw = g(act, "Banned IP list", "banned IP list", default=[])
+
             if isinstance(banned_raw, str):
                 banned_list = [s.strip()
                                for s in banned_raw.split() if s.strip()]
@@ -171,7 +175,7 @@ def parse_jail_status(output_or_resp):
                 },
             }
 
-    # 2) Fallback: existing text parser
+    # fallback text
     output = str(output_or_resp)
     lines = output.splitlines()
     currently_failed = 0
@@ -209,12 +213,11 @@ def parse_jail_status(output_or_resp):
             continue
 
     banned_ip_list = [ip for ip in banned_ip_list if ip]
-
     return {
         "filter": {
             "currentlyFailed": currently_failed,
             "totalFailed": total_failed,
-            "fileList": file_list,  # now uniform {path, exists}
+            "fileList": file_list,
         },
         "actions": {
             "currentlyBanned": currently_banned,
@@ -259,53 +262,42 @@ def _normalize_structured_response(resp):
         return _pairs_to_dict(root)
     return None
 
+# -------- HTTP handler --------------------------------------------------------
+
 
 class Handler(BaseHTTPRequestHandler):
-    """HTTP request handler for the Fail2ban web interface.
+    """HTTP request handler for the Fail2ban web interface."""
 
-    This handler implements a minimal API under the `/api/` prefix and
-    serves static files from the `public` directory for all other
-    paths. Errors are returned as JSON objects with an `error`
-    property and HTTP status code 500 or 404 as appropriate.
-    """
-
-    def _set_headers(self, status=200, content_type="application/json"):
-        self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.end_headers()
-
+    # ------------------------------ GET --------------------------------------
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
         # API endpoints
         if path.startswith("/api/"):
             parts = path[len("/api/"):].strip("/").split("/")
             try:
+                # --- existing ---
                 if len(parts) == 1 and parts[0] == "status":
                     raw = send_command(["status"])
-                    text = flatten_response(raw)
                     result = parse_global_status(raw)
-                    self._set_headers()
-                    self.wfile.write(json.dumps(result).encode())
+                    _json(self, 200, result)
                     return
+
                 if len(parts) == 1 and parts[0] == "jails":
                     raw = send_command(["status"])
-                    text = flatten_response(raw)
                     result = parse_global_status(raw)
-                    self._set_headers()
-                    self.wfile.write(json.dumps(result["list"]).encode())
+                    _json(self, 200, result["list"])
                     return
+
                 if len(parts) == 3 and parts[0] == "jail" and parts[2] == "status":
                     jail = parts[1]
                     raw = send_command(["status", jail])
-                    text = flatten_response(raw)
                     result = parse_jail_status(raw)
-                    self._set_headers()
-                    self.wfile.write(json.dumps(result).encode())
+                    _json(self, 200, result)
                     return
 
                 if len(parts) == 1 and parts[0] == "file":
-                    # Read parameters: ?path=...&lines=...
                     qs = parse_qs(parsed.query)
                     file_path = qs.get("path", [""])[0]
                     try:
@@ -313,12 +305,10 @@ class Handler(BaseHTTPRequestHandler):
                     except ValueError:
                         lines_param = 0
 
-                    # Security check: allow absolute paths, but prevent traversal
                     abs_path = os.path.abspath(file_path)
                     if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
-                        self._set_headers(404)
-                        self.wfile.write(json.dumps(
-                            {"error": "File not found", "path": file_path}).encode())
+                        _json(self, 404, {
+                              "error": "File not found", "path": file_path})
                         return
 
                     try:
@@ -329,26 +319,55 @@ class Handler(BaseHTTPRequestHandler):
                                 content_lines = [next(f) for _ in range(
                                     lines_param) if not f.closed]
                             else:
-                                # negative -> last n lines
                                 content_lines = f.readlines()[lines_param:]
                     except Exception as e:
-                        self._set_headers(500)
-                        self.wfile.write(json.dumps(
-                            {"error": str(e)}).encode())
+                        _json(self, 500, {"error": str(e)})
                         return
-                    self._set_headers()
-                    self.wfile.write(json.dumps({
+
+                    _json(self, 200, {
                         "path": file_path,
                         "exists": True,
                         "lines": [line.rstrip("\n") for line in content_lines]
-                    }).encode())
+                    })
+                    return
+
+                # --- NEW: /api/version ---
+                if len(parts) == 1 and parts[0] == "version":
+                    raw = send_command(["version"])
+                    _json(self, 200, {
+                          "version": flatten_response(raw).strip()})
+                    return
+
+                # --- NEW: logging get ---
+                if len(parts) == 1 and parts[0] == "loglevel":
+                    raw = send_command(["get", "loglevel"])
+                    _json(self, 200, {
+                          "loglevel": flatten_response(raw).strip()})
+                    return
+
+                # --- NEW: database gets ---
+                if len(parts) == 2 and parts[0] == "db" and parts[1] == "file":
+                    raw = send_command(["get", "dbfile"])
+                    _json(self, 200, {"dbfile": flatten_response(raw).strip()})
+                    return
+
+                if len(parts) == 2 and parts[0] == "db" and parts[1] == "maxmatches":
+                    raw = send_command(["get", "dbmaxmatches"])
+                    _json(self, 200, {
+                          "dbmaxmatches": flatten_response(raw).strip()})
+                    return
+
+                if len(parts) == 2 and parts[0] == "db" and parts[1] == "purgeage":
+                    raw = send_command(["get", "dbpurgeage"])
+                    _json(self, 200, {
+                          "dbpurgeage": flatten_response(raw).strip()})
                     return
 
             except Exception as e:
-                self._set_headers(500)
-                self.wfile.write(json.dumps({"error": str(e)}).encode())
+                _json(self, 500, {"error": str(e)})
                 return
-        # Static file serving
+
+        # Static files
         if path == "/" or path == "":
             rel = "index.html"
         elif path.startswith("/public/"):
@@ -358,8 +377,7 @@ class Handler(BaseHTTPRequestHandler):
 
         file_path = _safe_join_static(rel)
         if not file_path:
-            self._set_headers(404, "text/plain")
-            self.wfile.write(b"Not found (path)")
+            _json(self, 404, {"error": "Not found (path)"})
             return
 
         if os.path.exists(file_path) and os.path.isfile(file_path):
@@ -385,22 +403,25 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 with open(file_path, "rb") as f:
                     data = f.read()
-                self._set_headers(200, ctype)
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.end_headers()
                 self.wfile.write(data)
             except Exception as e:
-                self._set_headers(500, "text/plain")
-                self.wfile.write(str(e).encode())
+                _json(self, 500, {"error": str(e)}, ctype="application/json")
         else:
-            self._set_headers(404, "text/plain")
-            self.wfile.write(b"Not found")
+            _json(self, 404, {"error": "Not found"})
 
+    # ------------------------------ POST -------------------------------------
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
         if not path.startswith("/api/"):
-            self._set_headers(404, "text/plain")
-            self.wfile.write(b"Not found3")
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"Not found")
             return
+
         parts = path[len("/api/"):].strip("/").split("/")
         try:
             length = int(self.headers.get("Content-Length", 0))
@@ -412,31 +433,174 @@ class Handler(BaseHTTPRequestHandler):
             if body:
                 data = json.loads(body)
         except Exception:
-            pass
+            data = {}
+
         try:
+            # ------- existing jail ban/unban -------
             if len(parts) == 3 and parts[0] == "jail" and parts[2] in ("ban", "unban"):
                 jail = parts[1]
                 action = parts[2]
                 ip = data.get("ip", "")
-                # Simple IPv4 validation
-                if not ip or not re.match(r"^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$", ip):
-                    self._set_headers(400)
-                    self.wfile.write(json.dumps(
-                        {"error": "A valid IPv4 address must be provided in the body as \"ip\""}).encode())
+                if not _is_valid_ipv4(ip):
+                    _json(self, 400, {
+                          "error": "A valid IPv4 address must be provided in the body as \"ip\""})
                     return
                 cmd = ["set", jail, "banip" if action ==
                        "ban" else "unbanip", ip]
                 raw = send_command(cmd)
-                text = flatten_response(raw)
-                self._set_headers()
-                self.wfile.write(json.dumps({"result": text.strip()}).encode())
+                _json(self, 200, {"result": flatten_response(raw).strip()})
                 return
+
+            # ------- NEW: BASIC server control -------
+            if len(parts) == 2 and parts[0] == "server" and parts[1] == "start":
+                raw = send_command(["start"])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+
+            if len(parts) == 2 and parts[0] == "server" and parts[1] == "restart":
+                raw = send_command(["restart"])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+
+            if len(parts) == 2 and parts[0] == "server" and parts[1] == "reload":
+                # Body: { "restart": bool, "unban": bool, "all": bool }
+                flags = []
+                if _bool(data.get("restart", False)):
+                    flags.append("--restart")
+                if _bool(data.get("unban",   False)):
+                    flags.append("--unban")
+                if _bool(data.get("all",     False)):
+                    flags.append("--all")
+                cmd = ["reload"] + flags
+                raw = send_command(cmd)
+                _json(self, 200, {"result": flatten_response(
+                    raw).strip(), "command": cmd})
+                return
+
+            if len(parts) == 2 and parts[0] == "server" and parts[1] == "stop":
+                raw = send_command(["stop"])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+
+            if len(parts) == 1 and parts[0] == "version":
+                raw = send_command(["version"])
+                _json(self, 200, {"version": flatten_response(raw).strip()})
+                return
+
+            # ------- NEW: jail-level restart/reload -------
+            if len(parts) == 3 and parts[0] == "jail" and parts[2] == "restart":
+                jail = parts[1]
+                # maps to: restart [--unban] [--if-exists] <JAIL>
+                flags = []
+                if _bool(data.get("unban", False)):
+                    flags.append("--unban")
+                if _bool(data.get("ifExists", False)):
+                    flags.append("--if-exists")
+                cmd = ["restart"] + flags + [jail]
+                raw = send_command(cmd)
+                _json(self, 200, {"result": flatten_response(
+                    raw).strip(), "command": cmd})
+                return
+
+            if len(parts) == 3 and parts[0] == "jail" and parts[2] == "reload":
+                jail = parts[1]
+                # maps to: reload [--restart] [--unban] [--if-exists] <JAIL>
+                flags = []
+                if _bool(data.get("restart", False)):
+                    flags.append("--restart")
+                if _bool(data.get("unban",   False)):
+                    flags.append("--unban")
+                if _bool(data.get("ifExists", False)):
+                    flags.append("--if-exists")
+                cmd = ["reload"] + flags + [jail]
+                raw = send_command(cmd)
+                _json(self, 200, {"result": flatten_response(
+                    raw).strip(), "command": cmd})
+                return
+
+            # ------- NEW: global unban -------
+            if len(parts) == 2 and parts[0] == "unban" and parts[1] == "all":
+                raw = send_command(["unban", "--all"])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+
+            if len(parts) == 1 and parts[0] == "unban":
+                # Body: { "ips": ["1.2.3.4", "5.6.7.8"] }
+                ips = data.get("ips", [])
+                if not isinstance(ips, list) or not ips:
+                    _json(self, 400, {
+                          "error": "Body must contain \"ips\": [\"IPv4\", ...]"})
+                    return
+                bad = [ip for ip in ips if not _is_valid_ipv4(ip)]
+                if bad:
+                    _json(self, 400, {
+                          "error": f"Invalid IPv4 addresses: {', '.join(bad)}"})
+                    return
+                cmd = ["unban"] + ips
+                raw = send_command(cmd)
+                _json(self, 200, {"result": flatten_response(
+                    raw).strip(), "command": cmd})
+                return
+
+            # ------- NEW: logging set -------
+            if len(parts) == 1 and parts[0] == "loglevel":
+                # POST to set: { "level": "INFO" } or { "level": 20 }
+                level = data.get("level", None)
+                if level is None:
+                    _json(self, 400, {"error": "Body must contain \"level\""})
+                    return
+                if isinstance(level, int):
+                    lvl_str = str(level)
+                else:
+                    lvl_str = str(level).strip().upper()
+                # Accepted by fail2ban: CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG, TRACEDEBUG, HEAVYDEBUG or 50-5
+                cmd = ["set", "loglevel", lvl_str]
+                raw = send_command(cmd)
+                _json(self, 200, {"result": flatten_response(
+                    raw).strip(), "command": cmd})
+                return
+
+            # ------- NEW: database set/get -------
+            if len(parts) == 2 and parts[0] == "db" and parts[1] == "maxmatches":
+                # POST set: { "value": 10 } ; GET is handled in do_GET
+                value = data.get("value", None)
+                if value is None:
+                    _json(self, 400, {
+                          "error": "Body must contain \"value\" (int)"})
+                    return
+                try:
+                    ival = int(value)
+                except Exception:
+                    _json(self, 400, {"error": "\"value\" must be an integer"})
+                    return
+                raw = send_command(["set", "dbmaxmatches", str(ival)])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+
+            if len(parts) == 2 and parts[0] == "db" and parts[1] == "purgeage":
+                # POST set: { "seconds": 86400 } ; GET is handled in do_GET
+                seconds = data.get("seconds", None)
+                if seconds is None:
+                    _json(self, 400, {
+                          "error": "Body must contain \"seconds\" (int)"})
+                    return
+                try:
+                    ival = int(seconds)
+                except Exception:
+                    _json(self, 400, {
+                          "error": "\"seconds\" must be an integer"})
+                    return
+                raw = send_command(["set", "dbpurgeage", str(ival)])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+
         except Exception as e:
-            self._set_headers(500)
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+            _json(self, 500, {"error": str(e)})
             return
-        self._set_headers(404)
-        self.wfile.write(json.dumps({"error": "Not found4"}).encode())
+
+        _json(self, 404, {"error": "Not found"})
+
+# -------- boot ---------------------------------------------------------------
 
 
 def run():
