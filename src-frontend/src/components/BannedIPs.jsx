@@ -1,8 +1,27 @@
 import { React, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Card, CardHeader, CardContent, Chip, Stack } from '@mui/material';
-import { unbanIP } from './api';
-export default function BannedIPs({ jailname, ips, refreshStatus }) {
+import {
+    Card,
+    CardHeader,
+    CardContent,
+    Chip,
+    Stack,
+    IconButton,
+    Tooltip,
+    Typography,
+} from '@mui/material';
+import { unbanIP, unbanAll } from './api';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+
+const DeleteAllIcon = HighlightOffIcon;
+
+export default function BannedIPs({
+    jailname,
+    ips,
+    refreshStatus,
+    doOverviewRefresh,
+    setJailRefresh,
+}) {
     const [ipList, setIPList] = useState([]);
     useEffect(() => {
         setIPList(ips);
@@ -28,6 +47,13 @@ export default function BannedIPs({ jailname, ips, refreshStatus }) {
             justifyContent: 'center',
             whiteSpace: 'nowrap',
             backgroundColor: 'rgba(128, 128, 128, 0.2)',
+        },
+        iconbutton: {
+            transition: 'transform 0.2s ease-in-out',
+            '&:hover': {
+                transform: 'scale(1.2)',
+            },
+            color: 'var(--text-color)',
         },
     };
     const sortIP = (a, b) => {
@@ -56,6 +82,13 @@ export default function BannedIPs({ jailname, ips, refreshStatus }) {
     const handleDelete = async (ipToDelete) => {
         await unbanIP(jailname, ipToDelete);
         refreshStatus();
+        if (doOverviewRefresh) doOverviewRefresh(true);
+        if (setJailRefresh) setJailRefresh(true);
+    };
+    const handleDeleteAll = async () => {
+        await unbanAll();
+        refreshStatus();
+        doOverviewRefresh(true);
     };
     return (
         <Card sx={styles.card}>
@@ -67,9 +100,25 @@ export default function BannedIPs({ jailname, ips, refreshStatus }) {
                         variant: 'h6',
                     },
                 }}
+                action={
+                    <Stack direction="row" spacing={1}>
+                        <Tooltip title="Delete all banned IPs">
+                            <IconButton
+                                aria-label="delete all"
+                                sx={styles.iconbutton}
+                                onClick={handleDeleteAll}
+                            >
+                                <DeleteAllIcon />
+                            </IconButton>
+                        </Tooltip>
+                    </Stack>
+                }
             />
             <CardContent sx={styles.cardcontent}>
                 <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap>
+                    {ipList.length === 0 && (
+                        <Typography variant="body2">No banned IPs</Typography>
+                    )}
                     {ipList.sort(sortIP).map((ip) => (
                         <Chip
                             key={ip}
@@ -87,4 +136,6 @@ BannedIPs.propTypes = {
     jailname: PropTypes.number.isRequired,
     ips: PropTypes.array.isRequired,
     refreshStatus: PropTypes.func.isRequired,
+    doOverviewRefresh: PropTypes.func.isRequired,
+    setJailRefresh: PropTypes.func.isRequired,
 };

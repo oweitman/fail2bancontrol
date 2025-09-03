@@ -16,17 +16,28 @@ import BannedIPs from './BannedIPs.jsx';
 import Filelist from './Filelist.jsx';
 import { getJailStatus, banIP } from './api';
 
-export default function Jail({ name }) {
+export default function Jail({
+    jailname,
+    doOverviewRefresh,
+    setJailRefresh,
+    jailRefresh,
+}) {
     const [ip, setIp] = useState('');
     const [error, setError] = useState('');
     const [jail, setJail] = useState(null);
 
     const refreshStatus = useCallback(() => {
-        getJailStatus(name).then(setJail).catch(console.error);
-    }, [name]);
+        getJailStatus(jailname).then(setJail).catch(console.error);
+    }, [jailname]);
+
     useEffect(() => {
         refreshStatus();
     }, [refreshStatus]);
+
+    useEffect(() => {
+        refreshStatus();
+        setJailRefresh(false);
+    }, [jailRefresh]);
 
     const styles = {
         card: {
@@ -51,6 +62,23 @@ export default function Jail({ name }) {
         },
         textfield: {
             color: 'var(--text-color)',
+            '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                    borderColor: 'divider', // <- normal
+                },
+                'x&:hover fieldset': {
+                    borderColor: 'divider', // <- hover
+                },
+                'x&.Mui-focused fieldset': {
+                    borderColor: 'divider', // <- focus
+                },
+            },
+            '& .MuiInputLabel-root': {
+                color: 'var(--text-color)',
+            },
+            '& .MuiInputLabel-root.Mui-focused': {
+                color: 'var(--accent-color)',
+            },
         },
         chip: {
             flex: '0 0 140px',
@@ -71,7 +99,7 @@ export default function Jail({ name }) {
         setError('');
 
         try {
-            await banIP(name, ip);
+            await banIP(jailname, ip);
             refreshStatus();
             setIp('');
         } catch (err) {
@@ -80,9 +108,9 @@ export default function Jail({ name }) {
     };
 
     return (
-        <Card id={`jail-${name}`} sx={styles.card}>
+        <Card id={`jail-${jailname}`} sx={styles.card}>
             <CardHeader
-                title={name}
+                title={jailname}
                 sx={{
                     ...styles.cardheader,
                     '& a': {
@@ -132,8 +160,9 @@ export default function Jail({ name }) {
                     <Filelist filelist={jail?.filter?.fileList || []} />
                     <BannedIPs
                         refreshStatus={refreshStatus}
-                        name={name}
+                        name={jailname}
                         ips={jail?.actions?.bannedIPList || []}
+                        doOverviewRefresh={doOverviewRefresh}
                     />
                     <Stack direction="row" spacing={1}>
                         <TextField
@@ -145,14 +174,7 @@ export default function Jail({ name }) {
                             error={!!error}
                             helperText={error}
                             size="small"
-                            sx={{
-                                '& .MuiInputLabel-root': {
-                                    color: 'var(--text-color)',
-                                },
-                                '& .MuiInputLabel-root.Mui-focused': {
-                                    color: 'var(--accent-color)',
-                                },
-                            }}
+                            sx={styles.textfield}
                         />
                         <Button
                             variant="contained"
@@ -168,5 +190,8 @@ export default function Jail({ name }) {
     );
 }
 Jail.propTypes = {
-    name: PropTypes.string.isRequired,
+    jailname: PropTypes.string.isRequired,
+    doOverviewRefresh: PropTypes.func.isRequired,
+    setJailRefresh: PropTypes.func.isRequired,
+    jailRefresh: PropTypes.bool.isRequired,
 };

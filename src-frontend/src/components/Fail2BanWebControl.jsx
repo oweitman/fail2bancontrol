@@ -8,6 +8,8 @@ import Footer from './Footer.jsx';
 import { getGlobalStatus } from './api';
 
 export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
+    const [overviewRefresh, setOverviewRefresh] = useState(false);
+    const [jailRefresh, setJailRefresh] = useState(false);
     const [status, setStatus] = useState(null);
     const styles = {
         fail2ban: {
@@ -37,9 +39,18 @@ export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
                 error={status?.error}
                 themeMode={themeMode}
                 setThemeMode={setThemeMode}
+                doOverviewRefresh={setOverviewRefresh}
+                overviewRefresh={overviewRefresh}
+                setJailRefresh={setJailRefresh}
             />
-            {status?.list?.map((jail) => (
-                <Jail key={jail} name={jail} />
+            {status?.list?.map((jailname) => (
+                <Jail
+                    key={jailname}
+                    jailname={jailname}
+                    doOverviewRefresh={setOverviewRefresh}
+                    setJailRefresh={setJailRefresh}
+                    jailRefresh={jailRefresh}
+                />
             ))}
             <Footer />
         </Box>
@@ -48,4 +59,5 @@ export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
 Fail2BanWebControl.propTypes = {
     themeMode: PropTypes.string.isRequired,
     setThemeMode: PropTypes.func.isRequired,
+    setJailRefresh: PropTypes.func.isRequired,
 };

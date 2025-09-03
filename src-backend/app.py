@@ -16,8 +16,40 @@ SOCKET_PATH = os.getenv('F2B_SOCKET', '/var/run/fail2ban/fail2ban.sock')
 # Marker used by the fail2ban server to delimit pickle messages.
 END_MARKER = b"<F2B_END_COMMAND>"
 STATIC_ROOT = os.path.abspath(os.getenv("STATIC_ROOT", "public"))
+IPV4_RE = re.compile(
+    r"^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$")
 
 # -------- helpers -------------------------------------------------------------
+
+
+def _collect_ips(obj):
+    """Sammelt rekursiv IPv4-Adressen aus beliebigen fail2ban Antworten (list/tuple/str)."""
+    ips = set()
+
+    def walk(x):
+        if isinstance(x, (list, tuple)):
+            for it in x:
+                walk(it)
+        elif isinstance(x, dict):
+            for v in x.values():
+                walk(v)
+        elif isinstance(x, (bytes, bytearray)):
+            try:
+                s = x.decode("utf-8", errors="ignore")
+            except Exception:
+                s = ""
+            for token in re.split(r"[\s,;]+", s.strip()):
+                if IPV4_RE.match(token):
+                    ips.add(token)
+        else:
+            s = str(x)
+            # Tokens aus Whitespace/Komma/Strichpunkt trennen
+            for token in re.split(r"[\s,;]+", s.strip()):
+                if IPV4_RE.match(token):
+                    ips.add(token)
+    walk(obj)
+    # sortiert zurückgeben
+    return sorted(ips, key=lambda ip: tuple(int(p) for p in ip.split(".")))
 
 
 def _safe_join_static(relpath: str) -> str:
@@ -290,6 +322,13 @@ class Handler(BaseHTTPRequestHandler):
                     _json(self, 200, result["list"])
                     return
 
+                if len(parts) == 1 and parts[0] == "banned":
+                    # maps to: fail2ban-client banned
+                    raw = send_command(["banned"])
+                    ips = _collect_ips(raw)
+                    _json(self, 200, {"ips": ips, "count": len(ips)})
+                    return
+
                 if len(parts) == 3 and parts[0] == "jail" and parts[2] == "status":
                     jail = parts[1]
                     raw = send_command(["status", jail])
@@ -519,27 +558,31 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             # ------- NEW: global unban -------
+            # POST /api/unban/all  ->  unban --all
             if len(parts) == 2 and parts[0] == "unban" and parts[1] == "all":
                 raw = send_command(["unban", "--all"])
-                _json(self, 200, {"result": flatten_response(raw).strip()})
+                _json(self, 200, {"result": flatten_response(
+                    raw).strip(), "command": ["unban", "--all"]})
                 return
 
-            if len(parts) == 1 and parts[0] == "unban":
-                # Body: { "ips": ["1.2.3.4", "5.6.7.8"] }
-                ips = data.get("ips", [])
-                if not isinstance(ips, list) or not ips:
-                    _json(self, 400, {
-                          "error": "Body must contain \"ips\": [\"IPv4\", ...]"})
-                    return
-                bad = [ip for ip in ips if not _is_valid_ipv4(ip)]
-                if bad:
-                    _json(self, 400, {
-                          "error": f"Invalid IPv4 addresses: {', '.join(bad)}"})
-                    return
-                cmd = ["unban"] + ips
-                raw = send_command(cmd)
+            # POST /api/unban/<ip>  ->  unban <ip>
+            if len(parts) == 2 and parts[0] == "unban" and _is_valid_ipv4(parts[1]):
+                ip = parts[1]
+                raw = send_command(["unban", ip])
                 _json(self, 200, {"result": flatten_response(
-                    raw).strip(), "command": cmd})
+                    raw).strip(), "command": ["unban", ip]})
+                return
+
+            # POST /api/unban  with body { "ip": "1.2.3.4" }  ->  unban <ip>
+            if len(parts) == 1 and parts[0] == "unban":
+                ip = data.get("ip", "")
+                if not _is_valid_ipv4(ip):
+                    _json(self, 400, {
+                          "error": "Body must contain a single valid IPv4 as \"ip\""})
+                    return
+                raw = send_command(["unban", ip])
+                _json(self, 200, {"result": flatten_response(
+                    raw).strip(), "command": ["unban", ip]})
                 return
 
             # ------- NEW: logging set -------

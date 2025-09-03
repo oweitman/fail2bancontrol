@@ -50,13 +50,44 @@ export async function banIP(jailName, ip) {
 * Unban IP in a jail
 */
 export async function unbanIP(jailName, ip) {
-    const res = await fetch(`${API_BASE}/jail/${encodeURIComponent(jailName)}/unban`, {
+    if (!jailName) {
+        const res = await fetch(`${API_BASE}/unban`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip }),   // { "ip": "123.123.123.123" }
+        });
+
+        if (!res.ok) {
+            const msg = await res.text().catch(() => "");
+            throw new Error(`Unban failed (${res.status}): ${msg}`);
+        }
+        return res.json(); // -> { result: "...", command: ["unban", "123.123.123.123"] }
+    } else {
+        const res = await fetch(`${API_BASE}/jail/${encodeURIComponent(jailName)}/unban`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip }),
+        });
+        if (!res.ok) {
+            const msg = await res.text().catch(() => "");
+            throw new Error(`Unban failed (${res.status}): ${msg}`);
+        }
+        return res.json();
+    }
+}
+
+export async function unbanAll() {
+    const res = await fetch(`${API_BASE}/unban/all`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip }),
+        body: ""
     });
-    if (!res.ok) throw new Error(`Error: ${res.status}`);
-    return res.json();
+
+    if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(`Unban failed (${res.status}): ${msg}`);
+    }
+    return res.json(); // -> { result: "...", command: ["unban", "123.123.123.123"] }
 }
 /**
 * Retrieve the contents of a file
