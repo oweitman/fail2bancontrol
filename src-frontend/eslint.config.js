@@ -1,29 +1,60 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import { defineConfig, globalIgnores } from 'eslint/config'
+// eslint.config.js
+import js from "@eslint/js";
+import globals from "globals";
+import react from "eslint-plugin-react";
+import json from "@eslint/json";
+import markdown from "@eslint/markdown";
+import css from "@eslint/css";
+import { defineConfig } from "eslint/config";
+
+// Hilfsfunktion: immer als Array behandeln
+const asArray = (v) => (Array.isArray(v) ? v : [v]);
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Basis JS (scoped)
   {
-    files: ['**/*.{js,jsx}'],
-    extends: [
-      js.configs.recommended,
-      reactHooks.configs['recommended-latest'],
-      reactRefresh.configs.vite,
-    ],
+    ...js.configs.recommended,
+    files: ["**/*.{js,mjs,cjs,jsx}"],
     languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        ecmaFeatures: { jsx: true },
-        sourceType: 'module',
-      },
+      ...js.configs.recommended.languageOptions,
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: { ...globals.browser },
     },
-    rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
-    },
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      "coverage/**",
+      ".dev-server/**",
+      "src-frontend/dist/**",
+      "public/**"
+    ]
   },
-])
+
+  // React NUR für JS/JSX (configs.flat.recommended kann ein Array sein)
+  ...asArray(react.configs?.flat?.recommended).map((cfg) => ({
+    ...cfg,
+    files: ["**/*.{js,jsx}"],
+    settings: { react: { version: "detect" }, ...(cfg?.settings || {}) },
+  })),
+
+  // JSON (liefert oft Array)
+  ...asArray(json.configs?.recommended).map((cfg) => ({
+    ...cfg,
+    files: ["**/*.json"],
+  })),
+
+  // Markdown (liefert Array; wenn du README.md NICHT linten willst, nimm das raus
+  // und packe **/*.md in .eslintignore)
+  ...asArray(markdown.configs?.recommended).map((cfg) => ({
+    ...cfg,
+    files: ["**/*.md"],
+  })),
+
+  // CSS
+  ...asArray(css.configs?.recommended).map((cfg) => ({
+    ...cfg,
+    files: ["**/*.css"],
+  })),
+]);

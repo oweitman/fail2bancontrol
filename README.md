@@ -411,6 +411,7 @@ Reads a file from the host filesystem.
 -   add log level slider
 -   add dbmaxmatches
 -   add dbpurgeage
+-   add eslint
 
 ### v1.5.1 — 2025-08-28
 
