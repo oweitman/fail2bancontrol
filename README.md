@@ -655,8 +655,6 @@ Read a file from the host filesystem.
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
-### v1.7.0 — 2025-09-03
-### v1.6.0 — 2025-09-03
 
 -   add more api endpoints
 -   add server control buttons start, stop, restart, reload
