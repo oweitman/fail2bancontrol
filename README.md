@@ -412,6 +412,7 @@ Reads a file from the host filesystem.
 -   add dbmaxmatches
 -   add dbpurgeage
 -   add eslint
+-   fix eslint errors
 
 ### v1.5.1 — 2025-08-28
 

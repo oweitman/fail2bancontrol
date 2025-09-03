@@ -1,5 +1,5 @@
 // src/components/Footer.jsx
-import { useEffect, useState } from 'react';
+import { React, useEffect, useState } from 'react';
 import { Box, Stack, Link, Typography, Chip } from '@mui/material';
 import { getLatestVersion, cmpSemver } from '../utils/version';
 

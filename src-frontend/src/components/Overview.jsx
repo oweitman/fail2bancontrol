@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { React, useState, useCallback, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
     Box,
     Card,
@@ -6,9 +7,6 @@ import {
     CardContent,
     Chip,
     Stack,
-    Grid,
-    Tooltip,
-    Button,
     IconButton,
     Typography,
     TextField,
@@ -237,7 +235,7 @@ export default function Overview({ list, themeMode, setThemeMode, error }) {
                                 sx={styles.iconbutton}
                                 onClick={onStart}
                             >
-                                <PlayArrowIcon />
+                                <StartIcon />
                             </IconButton>
                             <IconButton
                                 aria-label="stop"
@@ -251,7 +249,7 @@ export default function Overview({ list, themeMode, setThemeMode, error }) {
                                 sx={styles.iconbutton}
                                 onClick={onRestart}
                             >
-                                <RestartAltIcon />
+                                <RestartIcon />
                             </IconButton>
                             <IconButton
                                 aria-label="reload"
@@ -406,3 +404,9 @@ export default function Overview({ list, themeMode, setThemeMode, error }) {
         </>
     );
 }
+Overview.propTypes = {
+    list: PropTypes.object.isRequired,
+    themeMode: PropTypes.string.isRequired,
+    setThemeMode: PropTypes.func.isRequired,
+    error: PropTypes.string,
+};

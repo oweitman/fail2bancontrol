@@ -1,14 +1,13 @@
-import { useEffect, useState, useCallback } from 'react';
+import { React, useEffect, useState, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
     Card,
     CardHeader,
     CardContent,
     Stack,
-    Typography,
     TextField,
     Button,
     IconButton,
-    Chip,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
@@ -168,3 +167,6 @@ export default function Jail({ name }) {
         </Card>
     );
 }
+Jail.propTypes = {
+    name: PropTypes.string.isRequired,
+};

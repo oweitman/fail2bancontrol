@@ -1,3 +1,5 @@
+import { React } from 'react';
+import PropTypes from 'prop-types';
 import {
     Card,
     CardHeader,
@@ -82,3 +84,7 @@ export default function JailValues({ type, values }) {
         </Card>
     );
 }
+JailValues.propTypes = {
+    type: PropTypes.string.isRequired,
+    values: PropTypes.object.isRequired,
+};

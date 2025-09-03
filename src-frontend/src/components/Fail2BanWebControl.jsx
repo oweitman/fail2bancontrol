@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { React, useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { Box, Stack, Typography } from '@mui/material';
 import f2bLogo from '../assets/fail2ban-logo.png';
 import Jail from './Jail.jsx';
@@ -44,3 +45,7 @@ export default function Fail2BanWebControl({ themeMode, setThemeMode }) {
         </Box>
     );
 }
+Fail2BanWebControl.propTypes = {
+    themeMode: PropTypes.string.isRequired,
+    setThemeMode: PropTypes.func.isRequired,
+};

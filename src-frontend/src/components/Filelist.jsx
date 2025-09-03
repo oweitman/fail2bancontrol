@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { React, useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
     Card,
     CardHeader,
@@ -183,7 +184,6 @@ export default function Filelist({ filelist }) {
         if (dialogOpen && currentFilePath) {
             fetchFileData(currentFilePath);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tailMode, tailLines]);
 
     return (
@@ -325,3 +325,6 @@ export default function Filelist({ filelist }) {
         </>
     );
 }
+Filelist.propTypes = {
+    filelist: PropTypes.array.isRequired,
+};

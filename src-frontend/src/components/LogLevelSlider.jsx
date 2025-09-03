@@ -1,4 +1,6 @@
+import React from 'react';
 import { Slider, Box } from '@mui/material';
+import PropTypes from 'prop-types';
 
 const LOGLEVELS = [
     'CRITICAL',
@@ -76,3 +78,7 @@ export default function LogLevelSlider({ value, onChange }) {
         </Box>
     );
 }
+LogLevelSlider.propTypes = {
+    value: PropTypes.number.isRequired,
+    onChange: PropTypes.func.isRequired,
+};

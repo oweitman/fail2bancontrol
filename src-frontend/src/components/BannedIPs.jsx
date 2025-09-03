@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { React, useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { Card, CardHeader, CardContent, Chip, Stack } from '@mui/material';
 import { unbanIP } from './api';
-export default function BannedIPs({ name, ips, refreshStatus }) {
+export default function BannedIPs({ jailname, ips, refreshStatus }) {
     const [ipList, setIPList] = useState([]);
     useEffect(() => {
         setIPList(ips);
@@ -53,7 +54,7 @@ export default function BannedIPs({ name, ips, refreshStatus }) {
     };
 
     const handleDelete = async (ipToDelete) => {
-        await unbanIP(name, ipToDelete);
+        await unbanIP(jailname, ipToDelete);
         refreshStatus();
     };
     return (
@@ -82,3 +83,8 @@ export default function BannedIPs({ name, ips, refreshStatus }) {
         </Card>
     );
 }
+BannedIPs.propTypes = {
+    jailname: PropTypes.number.isRequired,
+    ips: PropTypes.array.isRequired,
+    refreshStatus: PropTypes.func.isRequired,
+};
