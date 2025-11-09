@@ -129,7 +129,7 @@ export default function Overview({
             },
         },
     };
-    const loadInfo = useCallback(async () => {
+    /*     const loadInfo = useCallback(async () => {
         try {
             const [v, ll, dbf, mm, pa, ba] = await Promise.all([
                 fetchJSON('/api/version').catch(() => ({ version: '' })),
@@ -152,7 +152,36 @@ export default function Overview({
         } catch (e) {
             showErr(e);
         }
+    }, []); */
+
+    const loadInfo = useCallback(async () => {
+        try {
+            // optional: add ?ttl=300 to smooth bursts when multiple components call at once
+            const o = await fetchJSON('/api/overview?ttl=300');
+
+            // o.version e.g. "Fail2Ban v1.0.2"
+            setVersion(o.version.split('\n')[1] || '');
+
+            // these come already normalized (second line extracted on server)
+            setLoglevel(String(o.loglevel ?? ''));
+
+            const db = o.db || {};
+            setDbfile(db.file || '');
+
+            const mmVal = String(db.maxmatches ?? '');
+            setDbMaxMatches(mmVal);
+            setInputDbMaxMatches(mmVal);
+
+            const paVal = String(db.purgeage ?? '');
+            setDbPurgeAge(paVal);
+            setInputDbPurgeAge(paVal);
+
+            setBanned(o.banned?.ips ?? []);
+        } catch (e) {
+            showErr(e);
+        }
     }, []);
+
     const call = useCallback(
         async (fn, successMsg) => {
             setBusy(true);
