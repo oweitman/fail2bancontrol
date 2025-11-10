@@ -691,6 +691,7 @@ Read a file from the host filesystem.
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+### v1.9.0 — 2025-11-10
 
 -   optimize overview requests
 -   add short time caching for some values
