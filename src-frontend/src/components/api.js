@@ -6,9 +6,19 @@ const API_BASE = '/api';
 */
 export async function getGlobalStatus() {
     const res = await fetch(`${API_BASE}/status`);
-    if (!res.ok) throw new Error(`Error: ${res.status} ${res.statusText}`);
-    let data = await res.json();
-    return data;
+    let errorDetail = "";
+
+    if (!res.ok) {
+        try {
+            const errJson = await res.json();
+            errorDetail = errJson?.error || JSON.stringify(errJson);
+        } catch {
+            errorDetail = await res.text().catch(() => "");
+        }
+        throw new Error(`Error ${res.status} ${res.statusText}${errorDetail ? `: ${errorDetail}` : ""}`);
+    }
+
+    return res.json();
 }
 
 /**
@@ -100,4 +110,16 @@ export async function getFile(filePath, lines = 0) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Error: ${res.status}`);
     return res.json();
+}
+export async function postJSON(url, body) {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `${res.status} ${res.statusText}`);
+    }
+    return res.json().catch(() => ({}));
 }

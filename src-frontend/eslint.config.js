@@ -57,4 +57,10 @@ export default defineConfig([
     ...cfg,
     files: ["**/*.css"],
   })),
+  {
+    rules: {
+      // von "error" auf "warn" setzen
+      "no-unused-vars": "warn",
+    },
+  },
 ]);

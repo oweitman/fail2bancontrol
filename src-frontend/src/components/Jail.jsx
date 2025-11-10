@@ -15,6 +15,7 @@ import JailValues from './JailValues.jsx';
 import BannedIPs from './BannedIPs.jsx';
 import Filelist from './Filelist.jsx';
 import { getJailStatus, banIP } from './api';
+import JailExtraInfo from './JailExtrainfo.jsx';
 
 export default function Jail({
     jailname,
@@ -184,6 +185,13 @@ export default function Jail({
                             Ban
                         </Button>
                     </Stack>
+                    <JailExtraInfo
+                        refreshStatus={refreshStatus}
+                        jailname={jailname}
+                        extrainfo={jail?.extra}
+                        doOverviewRefresh={doOverviewRefresh}
+                        setJailRefresh={setJailRefresh}
+                    />
                 </Stack>
             </CardContent>
         </Card>

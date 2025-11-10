@@ -211,6 +211,7 @@ http://<host>:9191
 -   all current banned IPs.
 -   Unban an IP address
 -   Ban an IP address
+-   Extra infos (e.g. maxmatches, maxlines, maxretry, findtime, bantime)
 
 ### Access the log files of a jail
 
@@ -293,6 +294,13 @@ Detailed status for a **single jail**.
         "currentlyBanned": 1,
         "totalBanned": 37,
         "bannedIPList": ["1.2.3.4"]
+    },
+    "extra": {
+        "maxlines": "1",
+        "maxmatches": "8",
+        "maxretry": "8",
+        "findtime": "600",
+        "bantime": "7200"
     }
 }
 ```
@@ -477,6 +485,34 @@ Maps to:
 
 ---
 
+### Jail - Level Settings
+
+#### POST `/api/jail/{jail}/{settings}`
+
+The following parameters are possible as {setting}
+
+-   findtime
+-   bantime
+-   maxretry
+-   maxmatches
+-   maxlines
+
+**Body**
+
+```json
+{ "value": 10 }
+```
+
+**200**
+
+```json
+{ "result": "<response>" }
+```
+
+**400** Missing or non-integer `value`.
+
+---
+
 ### Version & Logging
 
 #### GET `/api/version`
@@ -655,6 +691,13 @@ Read a file from the host filesystem.
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+
+-   optimize overview requests
+-   add short time caching for some values
+-   more error details in api responses
+-   add jail extra infos in frontend and api
+-   little css improvement
+
 ### v1.8.0 — 2025-09-03
 
 -   add more api endpoints

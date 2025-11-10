@@ -4,6 +4,7 @@ import socket
 import pickle
 import json
 import re
+import time as _time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -18,8 +19,74 @@ END_MARKER = b"<F2B_END_COMMAND>"
 STATIC_ROOT = os.path.abspath(os.getenv("STATIC_ROOT", "public"))
 IPV4_RE = re.compile(
     r"^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$")
+_OVERVIEW_CACHE = {"data": None, "ts": 0, "ttl": 0}
 
 # -------- helpers -------------------------------------------------------------
+
+
+def _value_line(raw) -> str:
+    """Return the value line from a typical fail2ban 'get' output (second line if present)."""
+    s = flatten_response(raw).splitlines()
+    if len(s) >= 2:
+        return s[1].strip()
+    return (s[0].strip() if s else "")
+
+
+def get_jail_extrainfo(jail: str) -> dict:
+    """Get extra info for a jail (e.g. maxmatches, maxlines, maxretry, findtime, bantime)."""
+    out = {}
+    raw = send_command(["get", jail, "maxlines"])
+    out["maxlines"] = _value_line(raw)
+    raw = send_command(["get", jail, "maxmatches"])
+    out["maxmatches"] = _value_line(raw)
+    raw = send_command(["get", jail, "maxretry"])
+    out["maxretry"] = _value_line(raw)
+    raw = send_command(["get", jail, "findtime"])
+    out["findtime"] = _value_line(raw)
+    raw = send_command(["get", jail, "bantime"])
+    out["bantime"] = _value_line(raw)
+    return out
+
+
+def _build_overview(fields: set | None = None) -> dict:
+    """Collect overview values in one go (sequential socket calls, single HTTP response)."""
+    fields = fields or {
+        "version", "loglevel",
+        "db.file", "db.maxmatches", "db.purgeage",
+        "banned"
+    }
+
+    out = {}
+
+    if "version" in fields:
+        raw = send_command(["version"])
+        out["version"] = flatten_response(raw).strip()
+
+    if "loglevel" in fields:
+        raw = send_command(["get", "loglevel"])
+        out["loglevel"] = _value_line(raw)
+
+    # db subtree
+    db = {}
+    wants_db = any(k.startswith("db.") for k in fields)
+    if wants_db:
+        if "db.file" in fields:
+            raw = send_command(["get", "dbfile"])
+            db["file"] = _value_line(raw)
+        if "db.maxmatches" in fields:
+            raw = send_command(["get", "dbmaxmatches"])
+            db["maxmatches"] = _value_line(raw)
+        if "db.purgeage" in fields:
+            raw = send_command(["get", "dbpurgeage"])
+            db["purgeage"] = _value_line(raw)
+        out["db"] = db
+
+    if "banned" in fields:
+        raw = send_command(["banned"])
+        ips = _collect_ips(raw)
+        out["banned"] = {"ips": ips, "count": len(ips)}
+
+    return out
 
 
 def _collect_ips(obj):
@@ -309,7 +376,49 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             parts = path[len("/api/"):].strip("/").split("/")
             try:
-                # --- existing ---
+                if len(parts) == 1 and parts[0] == "overview":
+                    qs = parse_qs(parsed.query)
+
+                    # parse requested fields
+                    fields_param = qs.get("fields", [""])[0].strip()
+                    if fields_param:
+                        # allow aliases without dot
+                        aliases = {
+                            "dbfile": "db.file",
+                            "dbmaxmatches": "db.maxmatches",
+                            "dbpurgeage": "db.purgeage",
+                        }
+                        raw_fields = [f.strip()
+                                      for f in fields_param.split(",") if f.strip()]
+                        fields = set(aliases.get(f, f) for f in raw_fields)
+                    else:
+                        fields = None  # take defaults in _build_overview
+
+                    # optional micro-cache to smooth bursts
+                    try:
+                        ttl_ms = int(qs.get("ttl", ["0"])[0])
+                    except Exception:
+                        ttl_ms = 0
+
+                    now = _time.time() * 1000
+                    if ttl_ms > 0 and _OVERVIEW_CACHE["data"] is not None:
+                        is_fresh = (
+                            now - _OVERVIEW_CACHE["ts"]) < min(ttl_ms, _OVERVIEW_CACHE["ttl"] or ttl_ms)
+                    else:
+                        is_fresh = False
+
+                    if is_fresh:
+                        _json(self, 200, _OVERVIEW_CACHE["data"])
+                        return
+
+                    data = _build_overview(fields)
+                    # store for subsequent callers within ttl window
+                    if ttl_ms > 0:
+                        _OVERVIEW_CACHE.update(
+                            {"data": data, "ts": now, "ttl": ttl_ms})
+
+                    _json(self, 200, data)
+                    return
                 if len(parts) == 1 and parts[0] == "status":
                     raw = send_command(["status"])
                     result = parse_global_status(raw)
@@ -333,6 +442,12 @@ class Handler(BaseHTTPRequestHandler):
                     jail = parts[1]
                     raw = send_command(["status", jail])
                     result = parse_jail_status(raw)
+
+                    try:
+                        extras = get_jail_extrainfo(jail)
+                        result["extra"] = extras
+                    except Exception as e:
+                        result.setdefault("_errors", {})["extrainfo"] = str(e)
                     _json(self, 200, result)
                     return
 
@@ -636,7 +751,86 @@ class Handler(BaseHTTPRequestHandler):
                 raw = send_command(["set", "dbpurgeage", str(ival)])
                 _json(self, 200, {"result": flatten_response(raw).strip()})
                 return
-
+            if len(parts) == 3 and parts[0] == "jail" and parts[2] == "bantime":
+                jailname = parts[1]
+                value = data.get("value", None)
+                if value is None:
+                    _json(self, 400, {
+                          "error": "Body must contain \"value\" (int)"})
+                    return
+                try:
+                    ival = int(value)
+                except Exception:
+                    _json(self, 400, {
+                          "error": "\"value\" must be an integer"})
+                    return
+                raw = send_command(["set", jailname,  "bantime", str(ival)])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+            if len(parts) == 3 and parts[0] == "jail" and parts[2] == "findtime":
+                jailname = parts[1]
+                value = data.get("value", None)
+                if value is None:
+                    _json(self, 400, {
+                          "error": "Body must contain \"value\" (int)"})
+                    return
+                try:
+                    ival = int(value)
+                except Exception:
+                    _json(self, 400, {
+                          "error": "\"value\" must be an integer"})
+                    return
+                raw = send_command(["set", jailname,  "findtime", str(ival)])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+            if len(parts) == 3 and parts[0] == "jail" and parts[2] == "maxretry":
+                jailname = parts[1]
+                value = data.get("value", None)
+                if value is None:
+                    _json(self, 400, {
+                          "error": "Body must contain \"value\" (int)"})
+                    return
+                try:
+                    ival = int(value)
+                except Exception:
+                    _json(self, 400, {
+                          "error": "\"value\" must be an integer"})
+                    return
+                raw = send_command(["set", jailname,  "maxretry", str(ival)])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+            if len(parts) == 3 and parts[0] == "jail" and parts[2] == "maxmatches":
+                jailname = parts[1]
+                value = data.get("value", None)
+                if value is None:
+                    _json(self, 400, {
+                          "error": "Body must contain \"value\" (int)"})
+                    return
+                try:
+                    ival = int(value)
+                except Exception:
+                    _json(self, 400, {
+                          "error": "\"value\" must be an integer"})
+                    return
+                raw = send_command(["set", jailname,  "maxmatches", str(ival)])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
+            if len(parts) == 3 and parts[0] == "jail" and parts[2] == "maxlines":
+                jailname = parts[1]
+                value = data.get("value", None)
+                if value is None:
+                    _json(self, 400, {
+                          "error": "Body must contain \"value\" (int)"})
+                    return
+                try:
+                    ival = int(value)
+                except Exception:
+                    _json(self, 400, {
+                          "error": "\"value\" must be an integer"})
+                    return
+                raw = send_command(["set", jailname,  "maxlines", str(ival)])
+                _json(self, 200, {"result": flatten_response(raw).strip()})
+                return
         except Exception as e:
             _json(self, 500, {"error": str(e)})
             return

@@ -129,30 +129,6 @@ export default function Overview({
             },
         },
     };
-    /*     const loadInfo = useCallback(async () => {
-        try {
-            const [v, ll, dbf, mm, pa, ba] = await Promise.all([
-                fetchJSON('/api/version').catch(() => ({ version: '' })),
-                fetchJSON('/api/loglevel').catch(() => ({ loglevel: '' })),
-                fetchJSON('/api/db/file').catch(() => ({ dbfile: '' })),
-                fetchJSON('/api/db/maxmatches').catch(() => ({
-                    dbmaxmatches: '',
-                })),
-                fetchJSON('/api/db/purgeage').catch(() => ({ dbpurgeage: '' })),
-                fetchJSON('/api/banned').catch(() => ({ banned: [] })),
-            ]);
-            setVersion(v.version.split('\n')[1] || '');
-            setLoglevel(String(ll.loglevel.split('\n')[1] || ''));
-            setDbfile(dbf.dbfile.split('\n')[1] || '');
-            setDbMaxMatches(String(mm.dbmaxmatches.split('\n')[1] || ''));
-            setInputDbMaxMatches(String(mm.dbmaxmatches.split('\n')[1] || ''));
-            setDbPurgeAge(String(pa.dbpurgeage.split('\n')[1] || ''));
-            setInputDbPurgeAge(String(pa.dbpurgeage.split('\n')[1] || ''));
-            setBanned(ba.ips || []);
-        } catch (e) {
-            showErr(e);
-        }
-    }, []); */
 
     const loadInfo = useCallback(async () => {
         try {
@@ -288,10 +264,24 @@ export default function Overview({
 
     async function fetchJSON(url) {
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        let errorDetail = '';
+
+        if (!res.ok) {
+            try {
+                const errJson = await res.json();
+                errorDetail = errJson?.error || JSON.stringify(errJson);
+            } catch {
+                errorDetail = await res.text().catch(() => '');
+            }
+            throw new Error(
+                `Error ${res.status} ${res.statusText}${
+                    errorDetail ? `: ${errorDetail}` : ''
+                }`
+            );
+        }
+
         return res.json();
     }
-
     return (
         <>
             <Card id={`overview`} sx={styles.cardoverview}>
