@@ -24,6 +24,9 @@ It allows you to:
 - Ban and unban IP addresses
 - Control Fail2ban server actions
 
+![GitHub Workflow Status](img/jail.png)
+
+
 The application communicates directly with the Fail2ban UNIX socket.
 
 ---
@@ -94,6 +97,11 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+
+- restore old changelog
+- insert screenshot
+- no functional changes
+
 ### v1.9.1 — 2026-04-04
 
 - rework readme
@@ -102,40 +110,56 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 
 ### v1.9.0 — 2025-11-10
 
-- optimize overview requests
-- add caching
-- improve api error handling
+-   optimize overview requests
+-   add short time caching for some values
+-   more error details in api responses
+-   add jail extra infos in frontend and api
+-   little css improvement
 
 ### v1.8.0 — 2025-09-03
 
-- add server control
-- add db settings
-- improve UI
+-   add more api endpoints
+-   add server control buttons start, stop, restart, reload
+-   change theme switch button
+-   add server version
+-   add dbfile location
+-   add log level slider
+-   add dbmaxmatches
+-   add dbpurgeage
+-   add eslint
+-   fix eslint errors
+-   improve refresh between overview and jails
+-   improve design
+-   add testscript for banned ips
+-   add some more documentations
 
 ### v1.5.1 — 2025-08-28
 
-- frontend rebuild
+-   recreate frontend sources
+-   improve release script
 
 ### v1.5.0 – 2025-08-28
 
-- versioning
+-   add version
+-   add workflow actions for release and version
 
-### v1.4.0
+### Version 1.4.0
 
-- backend improvements
+-   improve backend logic für prod and dev
+-   add footer with links
 
-### v1.3.0
+### Version 1.3.0
 
-- docker automation
+-   automate docker push
 
-### v1.2.0
+### Version 1.2.0
 
-- file view feature
+-   Feature FileView
 
-### v1.1.0
+### Version 1.1.0
 
-- react UI
+-   Move gui to mui/react
 
-### v1.0.0
+### Version 1.0.0
 
-- initial release
+-   Initial release
