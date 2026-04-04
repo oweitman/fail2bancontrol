@@ -94,6 +94,7 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+### v1.9.1 — 2026-04-04
 
 - rework readme
 - add documentation local install without docker
