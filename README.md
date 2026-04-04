@@ -97,6 +97,7 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+### v1.9.2 — 2026-04-04
 
 - restore old changelog
 - insert screenshot
