@@ -1,249 +1,134 @@
-# Frontend Release Script — Documentation
+# Release script
 
-This script automates **version bumping, changelog update, build, commit, push, and optional tagging** for your frontend located in `src-frontend/`.
+`scripts/release.js` prepares and publishes a versioned frontend build. The default
+flow creates a release commit and pushes it together with a version tag. That tag
+starts the repository's Docker Hub publishing workflow.
 
-> **Location assumption:** Run the script **from inside `src-frontend/`**. It relies on `process.cwd()` being `src-frontend`.
+## Publishing 1.10.0
 
----
+First commit or stash all existing work, including changes to this release script.
+Use `main` and ensure its history is ready to push to `origin`.
 
-## What it does (in order)
-
-1. **Safety checks**
-
-    - Aborts if there are **unstaged** or **staged-but-uncommitted** changes.
-    - Aborts if the build output dir (default: `dist/`) is **ignored by `.gitignore`**.
-    - Cleans the environment so `NODE_OPTIONS` (e.g., VS Code auto-attach) won’t interfere.
-
-2. **Version bump (interactive)**
-
-    - Reads `src-frontend/package.json` → `version`.
-    - Prompts: bump **\[m]ajor / \[i]minor / \[p]atch**.
-    - Writes the new semver back to `package.json`.
-
-3. **README changelog update**
-
-    - Looks for `<!-- CHANGELOG:INSERT -->` in `../README.md` (repo root).
-
-        - If found, **inserts** a line `### vX.Y.Z — YYYY-MM-DD` directly **below** the marker.
-        - If not found, **prepends** a `## Changelog` block with that entry.
-
-4. **Build**
-
-    - Runs `npm run build` in `src-frontend/`.
-    - Verifies the build output directory exists (default: `dist/`).
-
-5. **Commit & push**
-
-    - Stages `src-frontend/package.json`, `../README.md` (if present), and build output dir.
-    - Commits with message:
-      `chore(release): vX.Y.Z (build)`
-    - Pushes to the current branch.
-
-6. **Optional Git tag**
-
-    - By default, creates & pushes tag `vX.Y.Z`.
-    - Skip by setting `NO_TAG=1`.
-
----
-
-## File & Path layout
-
--   **Script CWD:** `src-frontend/`
--   **Reads/Writes**
-
-    -   `src-frontend/package.json`
-    -   `../README.md` (repo root)
-
--   **Build output**
-
-    -   Default: `src-frontend/dist/`
-    -   Override via `BUILD_DIR` env (see below)
-
----
-
-## Environment variables
-
--   `BUILD_DIR` (optional): override build output folder name
-    _Default_: `dist`
-    _Example_: `BUILD_DIR=build`
--   `NO_TAG=1` (optional): skip creating & pushing git tag.
--   `NODE_OPTIONS` is automatically **stripped** for the build subprocess (to avoid auto-attach/debug flags issues).
-
----
-
-## Usage
-
-Make the script executable (once):
+From the development container:
 
 ```bash
-chmod +x scripts/release-frontend.js
+cd /workspaces/fail2bancontrol/src-frontend
+npm run release
 ```
 
-Run it **from `src-frontend/`**:
-
-```bash
-# default (build to dist/, create tag vX.Y.Z)
-./scripts/release-frontend.js
-
-# or with Node
-node ./scripts/release-frontend.js
-```
-
-Examples with environment variables:
-
-```bash
-# Use a different build dir
-BUILD_DIR=build ./scripts/release-frontend.js
-
-# Do everything except tagging
-NO_TAG=1 ./scripts/release-frontend.js
-```
-
-> Tip: Consider running on a **temporary branch** if you want a safe dry run:
->
-> ```
-> git checkout -b release-test
-> NO_TAG=1 ./scripts/release-frontend.js
-> ```
-
----
-
-## Interactive prompt
-
-You’ll be asked:
-
-```
-What do you want to bump? [m]ajor / [i]minor / [p]atch
-Choice (m/i/p):
-```
-
--   `m` / `major` → `X+1.0.0`
--   `i` / `minor` → `X.Y+1.0`
--   anything else → `patch` (`X.Y.Z+1`)
-
----
-
-## Commit & Tag behavior
-
--   **Commit message:** `chore(release): vX.Y.Z (build)`
--   **Includes in commit:**
-
-    -   `src-frontend/package.json` (with bumped version)
-    -   `../README.md` (changelog line added) — if it exists
-    -   Build output directory (`dist/` by default)
-
--   **Tag:** `vX.Y.Z` (unless `NO_TAG=1`)
--   **Push:** commits and tag are pushed to origin.
-
-> The script **aborts** if the build dir is ignored by `.gitignore` (to ensure the build artifacts are versioned as intended).
-
----
-
-## Integrations (CI/CD)
-
--   **“Release from `src-frontend/package.json`” GitHub Action**
-    After running this script, a commit with a **version bump** is pushed.
-    Your Action will pick up the change in `src-frontend/package.json` and create a **GitHub Release** with tag `vX.Y.Z` (or use the tag this script already pushed).
-
--   **“Build & Push to Docker Hub”**
-    If a tag `vX.Y.Z` is pushed, your Docker build workflow will:
-
-    -   Build multi-arch images
-    -   Push tag `X.Y.Z` (and `latest`, if enabled for tags)
-
----
-
-## Customization
-
--   **Changelog marker:**
-    The script looks for `<!-- CHANGELOG:INSERT -->` in `../README.md`.
-    Change `CHANGELOG_MARKER` in the script to use a different marker.
-
--   **Changelog format:**
-    The inserted line format is `### vX.Y.Z — YYYY-MM-DD`.
-    Adjust `formatDateISO()` or the line composition inside `updateReadme()` as needed.
-
--   **Build command:**
-    Currently `npm run build`. Change in:
-
-    ```js
-    sh('npm run build', { cwd: FRONTEND_DIR });
-    ```
-
--   **Commit message or staged files:**
-    Adjust the `git add` and `git commit -m` calls if you want a different message or additional files.
-
----
-
-## Troubleshooting
-
--   **“There are unstaged/staged changes”**
-    Commit or stash your work before running:
-
-    ```bash
-    git add -A && git commit -m "WIP"
-    # or
-    git stash
-    ```
-
--   **Build fails / build dir not found**
-
-    -   Check your frontend build script and output path.
-    -   Ensure `BUILD_DIR` (if set) matches your actual output.
-    -   The script will abort with a clear message if the output dir is missing.
-
--   **“Aborting: "dist" is ignored by .gitignore.”**
-    Remove the build dir entry from `.gitignore` (or change `BUILD_DIR`).
-    The script commits build artifacts by design.
-
--   **Tag already exists**
-    You’ll see a warning. Delete or reuse:
-
-    ```
-    git tag -d vX.Y.Z
-    git push origin :refs/tags/vX.Y.Z
-    ```
-
-    Then re-run (or set `NO_TAG=1`).
-
--   **Push errors (e.g., no upstream branch)**
-    Set the upstream first:
-
-    ```
-    git push --set-upstream origin <your-branch>
-    ```
-
--   **VS Code auto-attach / debug flags interfering**
-    The script cleans `NODE_OPTIONS` for subprocesses. If you still see issues, check your terminal/session env.
-
----
-
-## Notes
-
--   **Node & Git required:** The script uses `execSync` to run `git` and `npm`. Ensure both are installed and in PATH.
--   **Cross-platform:** Works on macOS/Linux and Windows (e.g., Git Bash). Paths are quoted for safety.
--   **Monorepo-friendly:** Paths are calculated relative to `src-frontend/` (current directory) and `..` (repo root).
-
----
-
-## Example session
+At the prompt, choose **`i`** (minor) to change `1.9.2` to `1.10.0`:
 
 ```text
-$ cd src-frontend
-$ ./scripts/release-frontend.js
-
-Current version in src-frontend/package.json: 1.5.1
-What do you want to bump? [m]ajor / [i]minor / [p]atch
-Choice (m/i/p): p
-Version bumped: 1.5.1 -> 1.5.2
-README.md: Inserted entry below marker.
-
-🛠  Building frontend in /path/to/repo/src-frontend …
-# (build output…)
-
-[master 1234abcd] chore(release): v1.5.2 (build)
- 3 files changed, …
- Tag v1.5.2 created & pushed.
-
-✅ Done. Build committed and release commit pushed.
+Current version: 1.9.2
+Bump [m]ajor / [i]minor / [p]atch (default p): i
 ```
+
+The script can also be invoked from the repository root:
+
+```bash
+node scripts/release.js
+```
+
+Paths are resolved relative to the script, independently of the terminal's current
+directory. Run Git commands without sudo; the normal development user must own the
+repository files.
+
+## What the script does
+
+1. Checks that `package.json` and `package-lock.json` exist and their versions match.
+   Also checks that the working tree and index are clean, including untracked files,
+   that `origin` exists, and that the build directory is not ignored by Git.
+2. Requires `main` for tagged releases and rejects a detached HEAD.
+3. Prompts for a major, minor, or patch increase. Empty input defaults to patch;
+   invalid input aborts without changing release files.
+4. Checks that the target tag exists neither locally nor on `origin`. Failure to
+   contact the remote aborts before version files are changed.
+5. Runs `npm version X.Y.Z --no-git-tag-version --ignore-scripts` in `src-frontend`.
+   This updates both package files, including the lockfile's root package version,
+   without running version lifecycle scripts or creating npm's own commit/tag.
+6. Adds a dated heading below `<!-- CHANGELOG:INSERT -->` in `README.md`, if present.
+   Dates use the `Europe/Berlin` time zone. If the marker is absent, a changelog
+   section is prepended. Release notes themselves are not generated locally.
+7. Runs `npm run build` and checks that the output directory exists and is nonempty.
+8. Stages `package.json`, `package-lock.json`, the build output including removed
+   assets, and `README.md` if present. Creates `chore(release): vX.Y.Z (build)`.
+9. Creates the local tag `vX.Y.Z`.
+10. Pushes the current branch and tag to `origin` in one atomic Git push. Both
+    references must be accepted; otherwise neither reference is published.
+
+The push includes earlier local commits on the branch as well as the release
+commit. `NODE_OPTIONS` is removed from subprocess environments so VS Code's
+Node auto-attach options do not interfere. Commands use argument arrays rather
+than shell interpolation, including when paths contain spaces.
+
+## Version choices
+
+| Input | Result from 1.9.2 |
+| --- | --- |
+| `m` or `major` | `2.0.0` |
+| `i` or `minor` | `1.10.0` |
+| `p`, `patch`, or empty input | `1.9.3` |
+
+The script expects a stable version in the form `X.Y.Z`.
+
+## Docker Hub and GitHub integration
+
+The script pushes the tag; GitHub Actions performs the image build and upload.
+For `v1.10.0`, the configured Docker workflow publishes:
+
+- `oweitman/fail2bancontrol:1.10.0`
+- `oweitman/fail2bancontrol:latest`
+
+Images are built for `linux/amd64` and `linux/arm64`. The workflow requires valid
+repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
+A successful script run means Git accepted the push, not that the asynchronous
+Docker build has finished. Check [GitHub Actions](https://github.com/oweitman/fail2bancontrol/actions)
+for its result. The existing package-change workflow also creates or updates the
+GitHub Release corresponding to the version tag.
+
+## Environment options
+
+| Variable | Behavior |
+| --- | --- |
+| `NO_TAG=1` | Skips the local tag and its push; the release commit is still created and pushed to `origin`. Allows branches other than `main`. |
+| `BUILD_DIR=build` | Uses another output directory inside `src-frontend` and passes `--outDir` to the Vite build. Default: `dist`. |
+
+`NO_TAG=1` is **not a dry run** and does not disable the repository's package-change
+GitHub Release workflow on `main`. Use a disposable local repository for tests
+without publishing anything.
+
+The production Dockerfile expects `src-frontend/dist`. A custom `BUILD_DIR` is for
+other build arrangements and does not automatically change the Dockerfile.
+
+## Failure handling
+
+- **Uncommitted work:** Commit or stash it, including untracked files, before running.
+- **Version mismatch or missing lockfile:** Restore a consistent, committed pair of
+  package files before trying again.
+- **Tag already exists:** Inspect the existing release and choose an appropriate
+  next version. The script does not delete or overwrite tags.
+- **Build fails:** No release commit, tag, or push is performed. Version/changelog
+  and partial build changes may remain locally so they can be inspected or repaired.
+- **Push fails:** The release commit and tag remain local. The script exits with an
+  error and prints the exact push command to retry. Fix the Git/remote problem and
+  retry that command instead of running another version bump. For example:
+
+  ```bash
+  git push --atomic origin HEAD:refs/heads/main refs/tags/v1.10.0
+  ```
+
+  If the remote rejects atomic pushes, the script does not fall back to separate
+  pushes. This avoids publishing only part of a release.
+
+## Tests
+
+From the repository root:
+
+```bash
+node --test test/release.test.cjs
+```
+
+The tests use disposable repositories and local bare remotes. They verify matching
+manifest/lockfile versions, build artifacts, committed deletions, published tags,
+build failures, existing tags, dirty worktrees, branch restrictions, custom output
+directories, and atomic push rejection. They do not contact GitHub or Docker Hub.

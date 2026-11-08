@@ -2,186 +2,153 @@
 /* eslint-disable no-console */
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const readline = require('readline');
 
-const REPO_ROOT = path.join(process.cwd(), '..');          // script lives in src-frontend/
-const FRONTEND_DIR = process.cwd();                        // = src-frontend
+const REPO_ROOT = path.resolve(__dirname, '..');
+const FRONTEND_DIR = path.join(REPO_ROOT, 'src-frontend');
 const BUILD_DIR_NAME = process.env.BUILD_DIR || 'dist';
-const BUILD_DIR = path.join(FRONTEND_DIR, BUILD_DIR_NAME);
-
-const PKG_PATH = path.join(FRONTEND_DIR, 'package.json'); // src-frontend/package.json
-const README_PATH = path.join(REPO_ROOT, 'README.md');    // ../README.md
+const BUILD_DIR = path.resolve(FRONTEND_DIR, BUILD_DIR_NAME);
+const PKG_PATH = path.join(FRONTEND_DIR, 'package.json');
+const LOCK_PATH = path.join(FRONTEND_DIR, 'package-lock.json');
+const README_PATH = path.join(REPO_ROOT, 'README.md');
 const CHANGELOG_MARKER = '<!-- CHANGELOG:INSERT -->';
-const DO_TAG = process.env.NO_TAG ? false : true;         // set NO_TAG=1 to skip tagging
-
-// clean env (removes e.g. VS Code Auto-Attach NODE_OPTIONS)
+const DO_TAG = process.env.NO_TAG !== '1';
 const CLEAN_ENV = Object.fromEntries(
-    Object.entries(process.env).filter(([k]) => k !== 'NODE_OPTIONS')
+    Object.entries(process.env).filter(([key]) => key !== 'NODE_OPTIONS')
 );
 
-function readJson(p) {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
+function run(command, args, { cwd = REPO_ROOT, capture = false } = {}) {
+    return execFileSync(command, args, {
+        cwd,
+        env: CLEAN_ENV,
+        stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+        encoding: 'utf8',
+    });
 }
-function writeJson(p, obj) {
-    fs.writeFileSync(p, JSON.stringify(obj, null, 2) + '\n', 'utf8');
+function git(args, options) {
+    return run('git', args, options);
 }
-function bumpSemver(v, kind) {
-    const [maj, min, pat] = String(v).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
-    if (kind === 'major') return `${maj + 1}.0.0`;
-    if (kind === 'minor') return `${maj}.${min + 1}.0`;
-    return `${maj}.${min}.${(pat || 0) + 1}`;
+function readJson(file) {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
-function formatDateISO(d = new Date()) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+function assertVersionFiles(version) {
+    const pkg = readJson(PKG_PATH);
+    const lock = readJson(LOCK_PATH);
+    if (pkg.version !== version || lock.version !== version
+        || (lock.packages && lock.packages['']?.version !== version)) {
+        throw new Error('package.json and package-lock.json versions do not match.');
+    }
+}
+function assertTagAvailable(tag) {
+    const local = git(['tag', '--list', tag], { capture: true }).trim();
+    if (local) throw new Error(`Local tag ${tag} already exists. No release files were changed.`);
+    try {
+        git(['ls-remote', '--exit-code', '--tags', 'origin', `refs/tags/${tag}`], { capture: true });
+    } catch (error) {
+        if (error.status === 2) return; // No matching remote tag.
+        throw new Error(`Could not check tags on origin: ${error.stderr || error.message}`);
+    }
+    throw new Error(`Tag ${tag} already exists on origin. No release files were changed.`);
+}
+function assertBuildTracked() {
+    try {
+        git(['check-ignore', '-q', '--', BUILD_DIR], { capture: true });
+    } catch (error) {
+        if (error.status === 1) return;
+        throw error;
+    }
+    throw new Error(`Build directory ${BUILD_DIR_NAME} is ignored by Git.`);
 }
 function updateReadme(version) {
-    if (!fs.existsSync(README_PATH)) {
-        console.warn('README.md not found — skipping changelog update.');
-        return;
-    }
+    if (!fs.existsSync(README_PATH)) return;
     const raw = fs.readFileSync(README_PATH, 'utf8');
-    const line = `### v${version} — ${formatDateISO()}`;
-    if (raw.includes(CHANGELOG_MARKER)) {
-        const updated = raw.replace(CHANGELOG_MARKER, `${CHANGELOG_MARKER}\n${line}`);
-        fs.writeFileSync(README_PATH, updated, 'utf8');
-        console.log('README.md: Inserted entry below marker.');
-    } else {
-        const updated = `## Changelog\n\n${line}\n` + raw;
-        fs.writeFileSync(README_PATH, updated, 'utf8');
-        console.log('README.md: Marker not found — prepended a changelog block.');
-    }
+    const date = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    const entry = `### v${version} — ${date}`;
+    const updated = raw.includes(CHANGELOG_MARKER)
+        ? raw.replace(CHANGELOG_MARKER, `${CHANGELOG_MARKER}\n${entry}`)
+        : `## Changelog\n\n${entry}\n\n${raw}`;
+    fs.writeFileSync(README_PATH, updated, 'utf8');
 }
-
-function sh(cmd, opts = {}) {
-    return execSync(cmd, { stdio: 'inherit', env: CLEAN_ENV, ...opts });
-}
-
-/** Ensures there are no unstaged or staged-but-uncommitted changes. */
-function assertNoUnstagedChanges() {
-    try {
-        // Working Tree vs Index
-        execSync('git diff --quiet', { stdio: 'ignore' });
-    } catch {
-        console.error(
-            '\n❌ Aborting: There are unstaged changes.\n' +
-            'Please commit or stash first (e.g., `git add -A && git commit -m "WIP"` or `git stash`).\n'
-        );
-        process.exit(1);
-    }
-    try {
-        // Index vs HEAD
-        execSync('git diff --cached --quiet', { stdio: 'ignore' });
-    } catch {
-        console.error(
-            '\n❌ Aborting: There are staged but uncommitted changes.\n' +
-            'Please commit or reset them first.\n'
-        );
-        process.exit(1);
-    }
-}
-
-/** Aborts if the path is ignored by .gitignore */
-function assertNotIgnoredInGit(p) {
-    try {
-        // exit 0 => ignored, exit 1 => not ignored (we treat 1 as "ok" via the catch)
-        execSync(`git check-ignore -q -- "${p}"`, { stdio: 'ignore' });
-        console.error(`\n❌ Aborting: "${p}" is ignored by .gitignore. Please adjust it or the build cannot be committed.\n`);
-        process.exit(1);
-    } catch {
-        // not ignored -> ok
-    }
-}
-
 async function askBump(current) {
-    console.log(`Current version in src-frontend/package.json: ${current}`);
-    console.log('What do you want to bump? [m]ajor / [i]minor / [p]atch');
+    console.log(`Current version: ${current}`);
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    const answer = await new Promise(res => rl.question('Choice (m/i/p): ', res));
-    rl.close();
-    const a = (answer || '').trim().toLowerCase();
-    if (a === 'm' || a === 'major') return 'major';
-    if (a === 'i' || a === 'minor') return 'minor';
-    return 'patch';
+    try {
+        const answer = await new Promise((resolve, reject) => {
+            rl.once('close', () => reject(new Error('Release cancelled.')));
+            rl.once('SIGINT', () => reject(new Error('Release cancelled.')));
+            rl.question('Bump [m]ajor / [i]minor / [p]atch (default p): ', resolve);
+        });
+        const choice = answer.trim().toLowerCase();
+        if (choice === 'm' || choice === 'major') return 'major';
+        if (choice === 'i' || choice === 'minor') return 'minor';
+        if (!choice || choice === 'p' || choice === 'patch') return 'patch';
+        throw new Error('Invalid choice. Use m, i, or p.');
+    } finally {
+        rl.close();
+    }
 }
 
-(function ensurePaths() {
-    if (!fs.existsSync(PKG_PATH)) {
-        console.error(`package.json not found at: ${PKG_PATH}`);
-        process.exit(1);
+async function main() {
+    for (const file of [PKG_PATH, LOCK_PATH]) {
+        if (!fs.existsSync(file)) throw new Error(`Required file missing: ${file}`);
     }
-    assertNotIgnoredInGit(BUILD_DIR); // early check
-})();
+    const relativeBuild = path.relative(FRONTEND_DIR, BUILD_DIR);
+    if (!relativeBuild || relativeBuild.startsWith('..') || path.isAbsolute(relativeBuild)
+        || ['src', 'node_modules', 'public'].includes(relativeBuild.split(path.sep)[0])) {
+        throw new Error('BUILD_DIR must be an output directory inside src-frontend (for example dist or build).');
+    }
+    const dirty = git(['status', '--porcelain', '--untracked-files=all'], { capture: true }).trim();
+    if (dirty) throw new Error('Commit or stash all changes, including untracked files, before releasing.');
+    const branch = git(['branch', '--show-current'], { capture: true }).trim();
+    if (!branch) throw new Error('Cannot release from a detached HEAD.');
+    if (DO_TAG && branch !== 'main') throw new Error('Publish tagged releases from main. Merge your feature branch first.');
+    git(['remote', 'get-url', 'origin'], { capture: true });
+    assertBuildTracked();
+    const current = readJson(PKG_PATH).version;
+    if (!/^\d+\.\d+\.\d+$/.test(current)) throw new Error('Expected a stable version in the form X.Y.Z.');
+    assertVersionFiles(current);
+    const kind = await askBump(current);
+    const [major, minor, patch] = current.split('.').map(Number);
+    const next = kind === 'major' ? `${major + 1}.0.0`
+        : kind === 'minor' ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
+    const tag = `v${next}`;
+    if (DO_TAG) assertTagAvailable(tag);
 
-(async function main() {
-    // 0) Clean state
-    assertNoUnstagedChanges();
-
-    // 1) Read version
-    const pkg = readJson(PKG_PATH);
-    const cur = pkg.version || '0.0.0';
-
-    // 2) Ask what to bump
-    const kind = await askBump(cur);
-    const next = bumpSemver(cur, kind);
-
-    // 3) Write version
-    pkg.version = next;
-    writeJson(PKG_PATH, pkg);
-    console.log(`Version bumped: ${cur} -> ${next}`);
-
-    // 4) Update README changelog
+    // npm updates both manifests, including the lockfile's root package entry.
+    run('npm', ['version', next, '--no-git-tag-version', '--ignore-scripts'], { cwd: FRONTEND_DIR });
+    assertVersionFiles(next);
     updateReadme(next);
-
-    // 5) **Frontend build before release** (in src-frontend)
-    console.log(`\n🛠  Building frontend in ${FRONTEND_DIR} …`);
-    try {
-        sh('npm run build', { cwd: FRONTEND_DIR });
-    } catch (e) {
-        console.error('\n❌ Build failed. Aborting release.\n');
-        process.exit(1);
-    }
-    if (!fs.existsSync(BUILD_DIR)) {
-        console.error(`\n❌ Build output "${BUILD_DIR}" not found. Please check your build configuration.\n`);
-        process.exit(1);
+    const buildArgs = ['run', 'build'];
+    if (BUILD_DIR_NAME !== 'dist') buildArgs.push('--', '--outDir', BUILD_DIR);
+    run('npm', buildArgs, { cwd: FRONTEND_DIR });
+    if (!fs.existsSync(BUILD_DIR) || !fs.statSync(BUILD_DIR).isDirectory()
+        || fs.readdirSync(BUILD_DIR).length === 0) {
+        throw new Error(`Build output missing or empty: ${BUILD_DIR}`);
     }
 
-    // 6) Commit & push (version + README + build output)
+    const files = [PKG_PATH, LOCK_PATH, BUILD_DIR];
+    if (fs.existsSync(README_PATH)) files.push(README_PATH);
+    git(['add', '-A', '--', ...files]);
+    git(['commit', '-m', `chore(release): ${tag} (build)`]);
+    if (DO_TAG) git(['tag', tag]);
+
+    // Publish the branch and tag together so CI sees the same release commit.
+    const refs = [`HEAD:refs/heads/${branch}`];
+    if (DO_TAG) refs.push(`refs/tags/${tag}`);
     try {
-        if (fs.existsSync(README_PATH)) {
-            sh(`git add "${PKG_PATH}" "${README_PATH}" "${BUILD_DIR}"`);
-        } else {
-            sh(`git add "${PKG_PATH}" "${BUILD_DIR}"`);
-        }
+        git(['push', '--atomic', 'origin', ...refs]);
     } catch {
-        // Fallback: add -A for the build folder
-        sh(`git add -A "${BUILD_DIR}"`);
-        sh(`git add "${PKG_PATH}"`);
-        if (fs.existsSync(README_PATH)) sh(`git add "${README_PATH}"`);
+        console.error(`Release commit${DO_TAG ? ' and tag' : ''} remain local. No automatic rollback was performed.`);
+        console.error(`After resolving the push error, retry:\n  git push --atomic origin ${refs.join(' ')}`);
+        throw new Error('Publication failed. Do not rerun the version bump to retry this release.');
     }
+    console.log(`Release ${next} pushed successfully${DO_TAG ? ` with tag ${tag}. Docker publishing is now handled by GitHub Actions.` : '. NO_TAG=1: no tag was pushed; this does not trigger a tagged Docker release.'}`);
+}
 
-    sh(`git commit -m "chore(release): v${next} (build)"`);
-    sh(`git push`);
-
-    // 7) Optional: create & push tag
-    if (DO_TAG) {
-        const tag = `v${next}`;
-        try {
-            sh(`git tag ${tag}`);
-            sh(`git push origin ${tag}`);
-            console.log(`Tag ${tag} created & pushed.`);
-        } catch {
-            console.warn(`Could not create/push tag ${tag}. Manually run:\n  git tag ${tag} && git push origin ${tag}`);
-        }
-    } else {
-        console.log('NO_TAG is set — skipping tagging.');
-    }
-
-    console.log('\n✅ Done. Build committed and release commit pushed.');
-})().catch(err => {
-    console.error(err);
-    process.exit(1);
+main().catch((error) => {
+    console.error(`\nRelease aborted: ${error.message}`);
+    process.exitCode = 1;
 });

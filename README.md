@@ -92,6 +92,12 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 
 ---
 
+## Releases
+
+[Release script and Docker Hub publishing](scripts/SCRIPT.md)
+
+---
+
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
