@@ -101,6 +101,7 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+### v1.10.0 — 2026-11-09
 
 - add IP Informations for blocked IPs
 - add detaild features description
