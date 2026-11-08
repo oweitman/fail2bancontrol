@@ -123,3 +123,15 @@ export async function postJSON(url, body) {
     }
     return res.json().catch(() => ({}));
 }
+
+/** Look up an IP using the shared backend cache, or explicitly refresh it. */
+export async function getIPInfo(ip, force = false, signal) {
+    const params = new URLSearchParams({ ip, force: force ? '1' : '0' });
+    const res = await fetch(`${API_BASE}/ip-info?${params}`, {
+        signal,
+        cache: 'no-store',
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || `IP lookup failed (${res.status}).`);
+    return result;
+}

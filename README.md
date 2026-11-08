@@ -26,7 +26,6 @@ It allows you to:
 
 ![GitHub Workflow Status](img/jail.png)
 
-
 The application communicates directly with the Fail2ban UNIX socket.
 
 ---
@@ -38,22 +37,21 @@ Choose one of the following:
 - [👉 Docker Hub image → see](documentation/InstallDockerhubDocker.md)
 - [👉 Docker Image build locally → see](documentation/InstallGithubDocker.md)
 - [👉 Local install without docker → see](documentation/InstallLocalNoDocker.md)
+- [Development with VS Code and Dev Containers](.devcontainer/README.md)
 
 ---
 
 ## Features
 
-### Jail Overview
+- Global Fail2ban overview and per-jail metrics for failed attempts and bans.
+- Manual IP banning, individual unbanning, and removal of all bans.
+- On-demand IP location, organization, ISP, and ASN lookups with a shared 24-hour backend cache and manual refresh.
+- Log file viewer with tail mode and configurable automatic refresh.
+- Fail2ban server controls and runtime settings for logging, database retention, and jail parameters.
+- Light and dark appearance, application version display, and update notifications.
+- HTTP API for status queries and management operations.
 
-- Current and total failed attempts
-- Current and total banned IPs
-- List of monitored log files
-- Ban / unban IPs
-- Extra jail parameters (bantime, findtime, etc.)
-
-### Log File Access
-
-If log files are mounted into the container, they can be viewed and monitored.
+[Detailed feature guide and usage](documentation/Features.md)
 
 ---
 
@@ -97,6 +95,11 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 ## Changelog
 
 <!-- CHANGELOG:INSERT -->
+
+- add IP Informations for blocked IPs
+- add detaild features description
+- update packages for frontend
+
 ### v1.9.2 — 2026-04-04
 
 - restore old changelog
@@ -111,56 +114,56 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 
 ### v1.9.0 — 2025-11-10
 
--   optimize overview requests
--   add short time caching for some values
--   more error details in api responses
--   add jail extra infos in frontend and api
--   little css improvement
+- optimize overview requests
+- add short time caching for some values
+- more error details in api responses
+- add jail extra infos in frontend and api
+- little css improvement
 
 ### v1.8.0 — 2025-09-03
 
--   add more api endpoints
--   add server control buttons start, stop, restart, reload
--   change theme switch button
--   add server version
--   add dbfile location
--   add log level slider
--   add dbmaxmatches
--   add dbpurgeage
--   add eslint
--   fix eslint errors
--   improve refresh between overview and jails
--   improve design
--   add testscript for banned ips
--   add some more documentations
+- add more api endpoints
+- add server control buttons start, stop, restart, reload
+- change theme switch button
+- add server version
+- add dbfile location
+- add log level slider
+- add dbmaxmatches
+- add dbpurgeage
+- add eslint
+- fix eslint errors
+- improve refresh between overview and jails
+- improve design
+- add testscript for banned ips
+- add some more documentations
 
 ### v1.5.1 — 2025-08-28
 
--   recreate frontend sources
--   improve release script
+- recreate frontend sources
+- improve release script
 
 ### v1.5.0 – 2025-08-28
 
--   add version
--   add workflow actions for release and version
+- add version
+- add workflow actions for release and version
 
 ### Version 1.4.0
 
--   improve backend logic für prod and dev
--   add footer with links
+- improve backend logic für prod and dev
+- add footer with links
 
 ### Version 1.3.0
 
--   automate docker push
+- automate docker push
 
 ### Version 1.2.0
 
--   Feature FileView
+- Feature FileView
 
 ### Version 1.1.0
 
--   Move gui to mui/react
+- Move gui to mui/react
 
 ### Version 1.0.0
 
--   Initial release
+- Initial release

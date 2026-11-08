@@ -5,8 +5,9 @@ import pickle
 import json
 import re
 import time as _time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
+from ip_lookup import lookup_ip, LookupError
 
 # Path to the fail2ban control socket. It can be overridden via the
 # environment variable F2B_SOCKET when running the container. The socket
@@ -144,6 +145,7 @@ def _bool(v, default=False):
 def _json(self, status=200, obj=None, ctype="application/json"):
     self.send_response(status)
     self.send_header("Content-Type", ctype)
+    self.send_header("Cache-Control", "no-store")
     self.end_headers()
     if obj is not None:
         self.wfile.write(json.dumps(obj).encode())
@@ -376,6 +378,20 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             parts = path[len("/api/"):].strip("/").split("/")
             try:
+                if parts == ["ip-info"]:
+                    qs = parse_qs(parsed.query, keep_blank_values=True)
+                    if (set(qs) - {"ip", "force"} or len(qs.get("ip", [])) != 1
+                            or len(qs.get("force", [])) > 1
+                            or qs.get("force", ["0"])[0] not in ("0", "1")):
+                        _json(self, 400, {"error": "Expected ip and optional force=0 or force=1."})
+                        return
+                    try:
+                        result = lookup_ip(qs["ip"][0], force=qs.get("force") == ["1"])
+                        _json(self, 200, result)
+                    except LookupError as exc:
+                        _json(self, exc.status, {"error": str(exc)})
+                    return
+
                 if len(parts) == 1 and parts[0] == "overview":
                     qs = parse_qs(parsed.query)
 
@@ -843,7 +859,7 @@ class Handler(BaseHTTPRequestHandler):
 def run():
     """Entry point to start the HTTP server."""
     port = int(os.getenv("PORT", "9000"))
-    server = HTTPServer(("0.0.0.0", port), Handler)
+    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     print(f"Server running on port {port}")
     server.serve_forever()
 

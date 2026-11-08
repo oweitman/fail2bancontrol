@@ -1,0 +1,3 @@
+#!/bin/sh
+# Elevate only the backend interpreter; keep VS Code and Git under the host UID.
+exec sudo -E /usr/local/bin/python "$@"

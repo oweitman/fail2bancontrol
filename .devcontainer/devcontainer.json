@@ -1,52 +1,58 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-    "name": "Python 3",
-    // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-    "image": "mcr.microsoft.com/devcontainers/base:debian",
-    "mounts": [
-        // Format: "source=<HOST_PATH>,target=<CONTAINER_PATH>,type=bind"
-        "source=/home/iobroker/docker/volume/nextcloud/fail2ban/socket,target=/var/run/fail2ban,type=bind",
-        "source=/home/iobroker/docker/volume/nextcloud/nginx/log,target=/var/log/nginx,type=bind",
-        "source=/home/iobroker/docker/volume/nextcloud/fail2ban/log,target=/var/log/fail2ban,type=bind"
-    ],
-
-    // Features to add to the dev container. More info: https://containers.dev/features.
+    "name": "Fail2Ban Control (Python 3.12 + Node 24)",
+    "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
     "features": {
         "ghcr.io/devcontainers/features/node:1": {
-            "version": "lts"
-        },
-        "ghcr.io/devcontainers/features/python:1": {
-            "version": "os-provided"
+            "version": "24"
         }
     },
-
-    // Configure tool-specific properties.
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/fail2bancontrol,type=bind",
+    "workspaceFolder": "/workspaces/fail2bancontrol",
+    "mounts": [
+        "source=/home/iobroker/docker/volume/nextcloud/fail2ban/socket,target=/var/run/fail2ban,type=bind",
+        "source=/home/iobroker/docker/volume/nextcloud/nginx/log,target=/var/log/nginx,type=bind,readonly",
+        "source=/home/iobroker/docker/volume/nextcloud/fail2ban/log,target=/var/log/fail2ban,type=bind,readonly",
+        "source=${localWorkspaceFolderBasename}-dev-node-modules,target=/workspaces/fail2bancontrol/src-frontend/node_modules,type=volume"
+    ],
+    "containerEnv": {
+        "F2B_SOCKET": "/var/run/fail2ban/fail2ban.sock",
+        "STATIC_ROOT": "/workspaces/fail2bancontrol/src-frontend/dist",
+        "PORT": "9000",
+        "TZ": "Europe/Berlin",
+        "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "postCreateCommand": "sudo chown -R \"$(id -u):$(id -g)\" src-frontend/node_modules && npm --prefix src-frontend ci",
+    "forwardPorts": [
+        5173,
+        9000
+    ],
+    "portsAttributes": {
+        "5173": {
+            "label": "Frontend (Vite)",
+            "onAutoForward": "notify"
+        },
+        "9000": {
+            "label": "Backend API",
+            "onAutoForward": "silent"
+        }
+    },
     "customizations": {
-        // Configure properties specific to VS Code.
         "vscode": {
-            "settings": {},
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "eslint.workingDirectories": [
+                    "./src-frontend"
+                ]
+            },
             "extensions": [
-                "streetsidesoftware.code-spell-checker",
+                "ms-python.python",
+                "ms-python.debugpy",
                 "dbaeumer.vscode-eslint",
-                "Codeium.codeium",
-                "esbenp.prettier-vscode"
+                "esbenp.prettier-vscode",
+                "streetsidesoftware.code-spell-checker"
             ]
         }
     },
-
-    // Use 'forwardPorts' to make a list of ports inside the container available locally.
-    // "forwardPorts": [9000],
-
-    // Use 'portsAttributes' to set default properties for specific forwarded ports.
-    // More info: https://containers.dev/implementors/json_reference/#port-attributes
-    "portsAttributes": {
-        "9000": {
-            "label": "fail2bancontrolserver",
-            "onAutoForward": "notify"
-        }
-    },
-
-    // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-    "remoteUser": "root"
+    "remoteUser": "vscode",
+    "updateRemoteUserUID": true
 }

@@ -13,6 +13,8 @@ import {
 import { unbanIP, unbanAll } from './api';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 
+import IPInfoDialog from './IPInfoDialog.jsx';
+
 const DeleteAllIcon = HighlightOffIcon;
 
 export default function BannedIPs({
@@ -22,6 +24,7 @@ export default function BannedIPs({
     doOverviewRefresh,
     setJailRefresh,
 }) {
+    const [selectedIP, setSelectedIP] = useState(null);
     const [ipList, setIPList] = useState([]);
     useEffect(() => {
         setIPList(ips);
@@ -91,45 +94,57 @@ export default function BannedIPs({
         doOverviewRefresh(true);
     };
     return (
-        <Card sx={styles.card}>
-            <CardHeader
-                title="Banned IPs"
-                sx={styles.cardheader}
-                slotProps={{
-                    title: {
-                        variant: 'h6',
-                    },
-                }}
-                action={
-                    <Stack direction="row" spacing={1}>
-                        <Tooltip title="Delete all banned IPs">
-                            <IconButton
-                                aria-label="delete all"
-                                sx={styles.iconbutton}
-                                onClick={handleDeleteAll}
-                            >
-                                <DeleteAllIcon />
-                            </IconButton>
-                        </Tooltip>
+        <>
+            <Card sx={styles.card}>
+                <CardHeader
+                    title="Banned IPs"
+                    sx={styles.cardheader}
+                    slotProps={{
+                        title: {
+                            variant: 'h6',
+                        },
+                    }}
+                    action={
+                        <Stack direction="row" spacing={1}>
+                            <Tooltip title="Delete all banned IPs">
+                                <IconButton
+                                    aria-label="delete all"
+                                    sx={styles.iconbutton}
+                                    onClick={handleDeleteAll}
+                                >
+                                    <DeleteAllIcon />
+                                </IconButton>
+                            </Tooltip>
+                        </Stack>
+                    }
+                />
+                <CardContent sx={styles.cardcontent}>
+                    <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap>
+                        {ipList.length === 0 && (
+                            <Typography variant="body2">No banned IPs</Typography>
+                        )}
+                        {ipList.sort(sortIP).map((ip) => (
+                            <Chip
+                                key={ip}
+                                label={ip}
+                                sx={styles.chip}
+                                clickable
+                                onClick={() => setSelectedIP(ip)}
+                                title="Show IP information"
+                                onDelete={() => handleDelete(ip)}
+                            />
+                        ))}
                     </Stack>
-                }
-            />
-            <CardContent sx={styles.cardcontent}>
-                <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap>
-                    {ipList.length === 0 && (
-                        <Typography variant="body2">No banned IPs</Typography>
-                    )}
-                    {ipList.sort(sortIP).map((ip) => (
-                        <Chip
-                            key={ip}
-                            label={ip}
-                            sx={styles.chip}
-                            onDelete={() => handleDelete(ip)}
-                        />
-                    ))}
-                </Stack>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+            {selectedIP && (
+                <IPInfoDialog
+                    key={selectedIP}
+                    ip={selectedIP}
+                    onClose={() => setSelectedIP(null)}
+                />
+            )}
+        </>
     );
 }
 BannedIPs.propTypes = {

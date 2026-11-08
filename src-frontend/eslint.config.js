@@ -11,6 +11,7 @@ import { defineConfig } from "eslint/config";
 const asArray = (v) => (Array.isArray(v) ? v : [v]);
 
 export default defineConfig([
+  { ignores: ["node_modules/**", "dist/**", "build/**", "coverage/**", "package-lock.json", "src/components/Overview copy.jsx"] },
   // Basis JS (scoped)
   {
     ...js.configs.recommended,
@@ -43,6 +44,7 @@ export default defineConfig([
   ...asArray(json.configs?.recommended).map((cfg) => ({
     ...cfg,
     files: ["**/*.json"],
+    language: "json/json",
   })),
 
   // Markdown (liefert Array; wenn du README.md NICHT linten willst, nimm das raus
@@ -50,14 +52,17 @@ export default defineConfig([
   ...asArray(markdown.configs?.recommended).map((cfg) => ({
     ...cfg,
     files: ["**/*.md"],
+    language: "markdown/gfm",
   })),
 
   // CSS
   ...asArray(css.configs?.recommended).map((cfg) => ({
     ...cfg,
     files: ["**/*.css"],
+    language: "css/css",
   })),
   {
+    files: ["**/*.{js,mjs,cjs,jsx}"],
     rules: {
       // von "error" auf "warn" setzen
       "no-unused-vars": "warn",

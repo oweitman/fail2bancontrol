@@ -429,6 +429,41 @@ Read a file from the host filesystem.
 
 ---
 
+## On-demand IP information
+
+### GET `/api/ip-info?ip=8.8.8.8`
+
+Looks up a public IPv4 or IPv6 address using `https://ip-info.com/json?ip=ADDRESS`.
+The server contacts the provider only when requested by a user. No API key is required.
+Only the backend contacts IP Info; the provider receives the queried address and the
+backend's public IP. Geolocation is approximate and may be incomplete or outdated.
+
+Successful results are shared across browsers and jails in a bounded in-memory
+backend cache (up to 4096 IPs) for a fixed 24 hours. Restarting the backend clears
+this cache. Add `&force=1` to bypass the cache and replace the entry with a fresh
+successful lookup. Failed refreshes do not replace a still-valid cache entry.
+Responses use `Cache-Control: no-store` to prevent HTTP/browser caching.
+
+**200**
+
+```json
+{
+    "data": { "ip": "8.8.8.8", "asn": 15169, "as_name": "Google LLC" },
+    "queriedAt": "2026-11-08T12:34:56+00:00",
+    "source": "https://ip-info.com/json?ip=8.8.8.8",
+    "cached": false
+}
+```
+
+`data` contains the provider's full response. Missing attributes may be `null`.
+`queriedAt` is the UTC timestamp of the completed provider lookup, preserved on
+cache hits. The frontend displays it in the browser's local time with a time zone.
+
+**400** Invalid parameters or a nonpublic IP. **429** Provider rate limit.
+**502** Provider unavailable or invalid response. **504** Provider timeout.
+
+---
+
 ## Static Files (non-API)
 
 - `/` → serves `index.html` from `STATIC_ROOT`
@@ -442,3 +477,9 @@ Read a file from the host filesystem.
 - IP validation is **IPv4 only** for ban/unban endpoints.
 - Several “get” endpoints return **raw textual Fail2ban output** collapsed into a single string; clients often need to split lines and use the second line for the value.
 - All commands are executed through the Fail2ban UNIX socket defined by `F2B_SOCKET`.
+
+### Checks
+
+Run backend tests with `python3 -m unittest discover -s test -v` from the repository
+root. Frontend checks: `cd src-frontend && npm ci && npm run lint && npm run build`.
+The Docker image serves the committed `src-frontend/dist` build.

@@ -16,7 +16,7 @@ RUN apt-get update \
 WORKDIR /app
 
 # Backend-Einstiegspunkt
-COPY src-backend/app.py /app/app.py
+COPY src-backend/*.py /app/
 
 # Frontend unter /public (inkl. index.html)
 RUN mkdir -p /app/public

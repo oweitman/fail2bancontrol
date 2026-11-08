@@ -5,36 +5,96 @@
             "label": "frontend: build",
             "type": "shell",
             "command": "npm run build",
-            "options": { "cwd": "${workspaceFolder}/src-frontend" },
+            "options": {
+                "cwd": "${workspaceFolder}/src-frontend"
+            },
             "problemMatcher": []
         },
         {
             "label": "docker: build image",
             "type": "shell",
             "command": "docker build -t fail2bancontrol .",
-            "dependsOn": ["frontend: build"],
+            "dependsOn": [
+                "frontend: build"
+            ],
             "problemMatcher": []
         },
         {
             "label": "frontend: dev",
-            "type": "npm",
-            "script": "dev",
-            "path": "src-frontend",
+            "type": "shell",
+            "command": "npm run dev -- --host 0.0.0.0 --port 5173 --strictPort",
+            "options": {
+                "cwd": "${workspaceFolder}/src-frontend"
+            },
             "isBackground": true,
             "problemMatcher": {
                 "owner": "vite",
-                "fileLocation": ["relative", "${workspaceFolder}"],
                 "pattern": {
-                    "regexp": "^(.*)$",
+                    "regexp": "^(.*?):(\\d+):(.*)$",
                     "file": 1,
-                    "message": 1
+                    "line": 2,
+                    "message": 3
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "^[^\\S\\r\\n]*(?:vite|VITE) v\\d+\\.\\d+\\.\\d+",
-                    "endsPattern": "Local:\\s+http://(?:localhost|127\\.0\\.0\\.1):5173/?"
+                    "beginsPattern": "VITE v",
+                    "endsPattern": "Local:.*5173"
                 }
             }
+        },
+        {
+            "label": "backend: dev",
+            "type": "shell",
+            "command": "sudo -E /usr/local/bin/python -u src-backend/app.py",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "STATIC_ROOT": "${workspaceFolder}/src-frontend/dist",
+                    "PORT": "9000"
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "python",
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "message": 3
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^$",
+                    "endsPattern": "Server running on port 9000"
+                }
+            }
+        },
+        {
+            "label": "dev: start",
+            "dependsOn": [
+                "backend: dev",
+                "frontend: dev"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": []
+        },
+        {
+            "label": "backend: test",
+            "type": "shell",
+            "command": "python -m unittest discover -s test -v",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "frontend: lint",
+            "type": "shell",
+            "command": "npm run lint",
+            "options": {
+                "cwd": "${workspaceFolder}/src-frontend"
+            },
+            "problemMatcher": []
         }
     ]
 }

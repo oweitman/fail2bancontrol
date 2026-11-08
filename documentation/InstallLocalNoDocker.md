@@ -56,7 +56,7 @@ sudo mkdir -p /opt/fail2bancontrol
 ### Copy backend
 
 ```bash
-sudo cp src-backend/app.py /opt/fail2bancontrol/app.py
+sudo cp src-backend/*.py /opt/fail2bancontrol/
 ```
 
 ### Copy frontend
@@ -165,7 +165,7 @@ cd fail2bancontrol
 
 sudo mkdir -p /opt/fail2bancontrol
 
-sudo cp src-backend/app.py /opt/fail2bancontrol/app.py
+sudo cp src-backend/*.py /opt/fail2bancontrol/
 sudo mkdir -p /opt/fail2bancontrol/public
 sudo cp -r src-frontend/dist/* /opt/fail2bancontrol/public/
 
