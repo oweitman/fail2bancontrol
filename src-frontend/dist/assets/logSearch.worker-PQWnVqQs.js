@@ -1,0 +1,2 @@
+(function(){"use strict";function c(e,s,l=!1,o=!1){const a=e===""?[]:e.split(`
+`),t=s&&new RegExp(l?s:s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),o?"g":"gi");return a.map((n,g)=>{const i=t?Array.from(n.matchAll(t),r=>[r.index,r.index+r[0].length]):[];return{text:n,index:g,matches:i}})}self.onmessage=({data:e})=>{try{self.postMessage({rows:c(e.text,e.query,e.regex,e.matchCase)})}catch{self.postMessage({error:"Invalid regular expression. Please check the pattern."})}}})();

@@ -142,13 +142,24 @@ def _bool(v, default=False):
     return default
 
 
+def _respond(self, status, payload, ctype, no_store=False):
+    """Write once; a disconnected browser cannot receive an error response."""
+    try:
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        if no_store:
+            self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
+    except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+        self.close_connection = True
+
+
 def _json(self, status=200, obj=None, ctype="application/json"):
-    self.send_response(status)
-    self.send_header("Content-Type", ctype)
-    self.send_header("Cache-Control", "no-store")
-    self.end_headers()
-    if obj is not None:
-        self.wfile.write(json.dumps(obj).encode())
+    # Serialize before starting the response so encoding failures can still be
+    # handled as server errors, independently of transport disconnections.
+    payload = json.dumps(obj).encode() if obj is not None else b""
+    _respond(self, status, payload, ctype, no_store=True)
 
 # -------- socket bridge -------------------------------------------------------
 
@@ -573,10 +584,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 with open(file_path, "rb") as f:
                     data = f.read()
-                self.send_response(200)
-                self.send_header("Content-Type", ctype)
-                self.end_headers()
-                self.wfile.write(data)
+                _respond(self, 200, data, ctype)
             except Exception as e:
                 _json(self, 500, {"error": str(e)}, ctype="application/json")
         else:
@@ -587,9 +595,7 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         if not path.startswith("/api/"):
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b"Not found")
+            _respond(self, 404, b"Not found", "text/plain")
             return
 
         parts = path[len("/api/"):].strip("/").split("/")
@@ -859,9 +865,12 @@ class Handler(BaseHTTPRequestHandler):
 def run():
     """Entry point to start the HTTP server."""
     port = int(os.getenv("PORT", "9000"))
-    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
-    print(f"Server running on port {port}")
-    server.serve_forever()
+    with ThreadingHTTPServer(("0.0.0.0", port), Handler) as server:
+        print(f"Server running on port {port}")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\nServer stopped.")
 
 
 if __name__ == "__main__":

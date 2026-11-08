@@ -46,7 +46,7 @@ Choose one of the following:
 - Global Fail2ban overview and per-jail metrics for failed attempts and bans.
 - Manual IP banning, individual unbanning, and removal of all bans.
 - On-demand IP location, organization, ISP, and ASN lookups with a shared 24-hour backend cache and manual refresh.
-- Log file viewer with tail mode and configurable automatic refresh.
+- Log file viewer with text/regex search, line filtering, tail mode, automatic refresh, and a maximizable dialog.
 - Fail2ban server controls and runtime settings for logging, database retention, and jail parameters.
 - Light and dark appearance, application version display, and update notifications.
 - HTTP API for status queries and management operations.
@@ -99,6 +99,7 @@ docker exec -it fail2bancontrol ls -l /var/run/fail2ban
 - add IP Informations for blocked IPs
 - add detaild features description
 - update packages for frontend
+- Added search and filter functionality to the log file dialog; the dialog can now be resized.
 
 ### v1.9.2 — 2026-04-04
 

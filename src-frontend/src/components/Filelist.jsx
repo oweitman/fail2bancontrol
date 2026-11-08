@@ -15,8 +15,13 @@ import {
     FormControlLabel,
     Switch,
     TextField,
+    IconButton,
+    Tooltip,
 } from '@mui/material';
 import { getFile } from './api';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import LogContent from './LogContent.jsx';
 
 const LS_KEYS = {
     tailLines: 'f2b.filelist.tailLines',
@@ -47,6 +52,7 @@ function readBoolLS(key, fallback) {
 
 export default function Filelist({ filelist }) {
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [fullScreen, setFullScreen] = useState(false);
     const [dialogTitle, setDialogTitle] = useState('');
     const [fileText, setFileText] = useState('');
     const [currentFilePath, setCurrentFilePath] = useState(null);
@@ -157,6 +163,7 @@ export default function Filelist({ filelist }) {
     );
 
     const handleClick = async (file) => {
+        setFullScreen(false);
         setDialogTitle(file.path);
         setCurrentFilePath(file.path);
         await fetchFileData(file.path);
@@ -218,14 +225,17 @@ export default function Filelist({ filelist }) {
                 open={dialogOpen}
                 onClose={() => setDialogOpen(false)}
                 fullWidth
+                fullScreen={fullScreen}
                 maxWidth={false}
+                aria-labelledby="log-file-title"
                 slotProps={{
                     paper: {
                         sx: {
-                            width: '80vw',
-                            height: '80vh',
-                            resize: 'both',
-                            overflow: 'auto',
+                            width: fullScreen ? '100%' : '80vw',
+                            height: fullScreen ? '100%' : '80vh',
+                            maxHeight: fullScreen ? '100%' : 'calc(100% - 64px)',
+                            resize: fullScreen ? 'none' : 'both',
+                            overflow: 'hidden',
                         },
                     },
                 }}
@@ -235,10 +245,12 @@ export default function Filelist({ filelist }) {
                         direction="row"
                         alignItems="center"
                         justifyContent="space-between"
+                        flexWrap="wrap"
+                        gap={1}
                     >
-                        <Box component="span">{dialogTitle}</Box>
+                        <Box component="span" id="log-file-title" sx={{ overflowWrap: 'anywhere', minWidth: 0 }}>{dialogTitle}</Box>
 
-                        <Stack direction="row" spacing={2} alignItems="center">
+                        <Stack direction="row" gap={2} alignItems="center" flexWrap="wrap">
                             <FormControlLabel
                                 control={
                                     <Switch
@@ -289,33 +301,24 @@ export default function Filelist({ filelist }) {
                                     input: { min: 1 },
                                 }}
                             />
+                            <Tooltip title={fullScreen ? 'Restore window' : 'Maximize window'}>
+                                <IconButton
+                                    sx={styles.refreshbutton}
+                                    aria-label={fullScreen ? 'Restore window' : 'Maximize window'}
+                                    onClick={() => setFullScreen((value) => !value)}
+                                >
+                                    {fullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                                </IconButton>
+                            </Tooltip>
                         </Stack>
                     </Stack>
                 </DialogTitle>
 
                 <DialogContent
                     dividers
-                    sx={{
-                        p: 0,
-                        m: 0,
-                        overflow: 'auto',
-                        backgroundColor: '#111',
-                    }}
+                    sx={{ p: 0, m: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
                 >
-                    <Box
-                        component="pre"
-                        sx={{
-                            m: 0,
-                            p: 2,
-                            fontFamily: 'monospace',
-                            fontSize: '0.9rem',
-                            whiteSpace: 'pre',
-                            overflow: 'auto',
-                            color: '#fff',
-                        }}
-                    >
-                        {fileText}
-                    </Box>
+                    {dialogOpen && <LogContent key={currentFilePath} text={fileText} />}
                 </DialogContent>
 
                 <DialogActions>

@@ -307,8 +307,10 @@ may not supply such file paths; the application does not include a journal brows
 
 The dialog shows the file path in its title and the contents as preformatted text.
 It initially uses approximately 80 percent of the window's width and height and
-can be resized depending on the browser. **Close** ends the display and its
-periodic requests.
+can be resized depending on the browser. **Maximize window** expands it to fill
+the browser viewport; **Restore window** returns it to its normal size. Search,
+filter, and file-view settings remain active while switching sizes. **Close** ends
+the display and its periodic requests.
 
 | Control | Function | Default without a saved setting |
 | --- | --- | --- |
@@ -325,6 +327,48 @@ efficient for large files.
 Tail mode, line count, and interval are stored in `localStorage` for that browser
 and website origin. They survive page reloads and serve as defaults when opening
 other files. This does not persist file contents in the browser.
+
+### Searching and filtering
+
+**Search log** searches the currently loaded lines and highlights each match.
+Search is case insensitive by default; enable **Match case** for case-sensitive
+matching. The status shows the selected matching line and the total number of
+matching lines. Multiple matches on one line are highlighted, but navigation
+counts that line once.
+
+Use **Next matching line** / **Previous matching line** to move through results.
+When the search field has focus, **Enter** moves forward and **Shift+Enter** moves
+backward. Navigation wraps at the first or last matching line.
+
+Enable **Filter matching lines** to hide lines that do not match the search.
+With filtering disabled, all loaded lines remain visible with matches highlighted.
+An empty search displays all lines. If no lines match an active filter, the viewer
+displays **No matching lines**. Clear the search to restore the complete loaded
+content.
+
+Enable **Regex** to interpret the query as a JavaScript regular expression.
+Without this option, characters such as `.` and `[` are treated as literal text.
+Patterns are applied independently to each line; for example:
+
+| Query | Regex | Finds |
+| --- | --- | --- |
+| `Failed password` | Off | Lines containing that text. |
+| `error\|warning` | On | Lines containing either word. |
+| `^ERROR` | On | Lines starting with `ERROR` (enable Match case for exact capitalization). |
+| `192\.0\.2\.\d+` | On | Addresses matching that pattern. |
+
+Enter the pattern without surrounding `/` delimiters or flags. **Match case**
+controls case sensitivity. Invalid patterns produce an error message and leave
+all loaded lines visible. Searches run in a separate worker and are stopped after
+two seconds if the pattern takes too long; simplify the pattern to try again.
+
+Search and filter are applied in the browser to the fetched content, without
+extra file requests. In tail mode they cover only the loaded last lines, not the
+whole file. Switch to **Entire file** to include the full file in the search.
+Automatic refresh reapplies the current search and filter to updated content.
+Queries and search options are retained while the dialog is open, including when
+maximizing or restoring it, and reset when the dialog is closed and reopened.
+They are not saved in browser storage.
 
 ## Appearance, version, and update notifications
 
